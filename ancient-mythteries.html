@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ancient Mythteries - Podcast</title>
+    <meta name="description" content="Explore the hidden stories, forgotten gods, and untold mysteries of ancient civilizations.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='24' fill='%234F46E5'>⚱️</text></svg>">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <span class="logo-icon">⚱️</span>
+                <div>
+                    <h1>Ancient Mythteries</h1>
+                    <p class="tagline">Uncovering forgotten stories from the dawn of civilization</p>
+                </div>
+            </div>
+            <nav class="nav">
+                <a href="#episodes">Episodes</a>
+                <a href="#subscribe">Subscribe</a>
+                <a href="#about">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h2>Journey through time with us</h2>
+                    <p>From Egyptian tombs to Mesopotamian ruins, from lost civilizations to myths that shaped the world—join us as we uncover the mysteries that history left behind.</p>
+                    <div class="hero-buttons">
+                        <a href="#latest-episode" class="btn btn-primary">Listen to Latest</a>
+                        <a href="#subscribe" class="btn btn-secondary">Subscribe Now</a>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="episode-card featured">
+                        <div class="episode-number">EP. 47</div>
+                        <h3>The Lost Palace of Knossos</h3>
+                        <p class="episode-date">June 15, 2024</p>
+                        <p class="episode-description">Deep dive into the Minoan civilization and the mysteries of the palace that inspired the Minotaur legend.</p>
+                        <button class="play-btn" onclick="playEpisode('The Lost Palace of Knossos')">
+                            <span>▶</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="episodes" class="episodes">
+        <div class="container">
+            <h2>Latest Episodes</h2>
+            <div class="episodes-grid">
+                <div class="episode-item">
+                    <div class="episode-number">EP. 47</div>
+                    <h3>The Lost Palace of Knossos</h3>
+                    <p class="episode-meta">June 15, 2024 • 42 min</p>
+                    <p class="episode-text">Exploring the Minoan civilization and the mysteries of the palace that inspired the Minotaur legend.</p>
+                    <button class="play-btn small" onclick="playEpisode('The Lost Palace of Knossos')">▶ Play</button>
+                </div>
+
+                <div class="episode-item">
+                    <div class="episode-number">EP. 46</div>
+                    <h3>Secrets of the Sphinx</h3>
+                    <p class="episode-meta">June 8, 2024 • 38 min</p>
+                    <p class="episode-text">Unraveling the enigmas of ancient Egypt's most iconic monument and what it reveals about pharaonic power.</p>
+                    <button class="play-btn small" onclick="playEpisode('Secrets of the Sphinx')">▶ Play</button>
+                </div>
+
+                <div class="episode-item">
+                    <div class="episode-number">EP. 45</div>
+                    <h3>The Code of Hammurabi Decoded</h3>
+                    <p class="episode-meta">June 1, 2024 • 45 min</p>
+                    <p class="episode-text">How ancient Babylon's legal system shaped civilization and what modern law owes to King Hammurabi.</p>
+                    <button class="play-btn small" onclick="playEpisode('The Code of Hammurabi Decoded')">▶ Play</button>
+                </div>
+
+                <div class="episode-item">
+                    <div class="episode-number">EP. 44</div>
+                    <h3>Stonehenge: Ritual or Observatory?</h3>
+                    <p class="episode-meta">May 25, 2024 • 41 min</p>
+                    <p class="episode-text">Investigating the astronomical alignments and ceremonial purposes of Britain's most mysterious monument.</p>
+                    <button class="play-btn small" onclick="playEpisode('Stonehenge: Ritual or Observatory?')">▶ Play</button>
+                </div>
+
+                <div class="episode-item">
+                    <div class="episode-number">EP. 43</div>
+                    <h3>The Voynich Manuscript Mystery</h3>
+                    <p class="episode-meta">May 18, 2024 • 39 min</p>
+                    <p class="episode-text">A 500-year-old book that no one can read—exploring what we know and don't know about this unsolved cipher.</p>
+                    <button class="play-btn small" onclick="playEpisode('The Voynich Manuscript Mystery')">▶ Play</button>
+                </div>
+
+                <div class="episode-item">
+                    <div class="episode-number">EP. 42</div>
+                    <h3>The Library of Alexandria Revisited</h3>
+                    <p class="episode-meta">May 11, 2024 • 44 min</p>
+                    <p class="episode-text">What we've learned from fragments and new discoveries about history's most legendary library.</p>
+                    <button class="play-btn small" onclick="playEpisode('The Library of Alexandria Revisited')">▶ Play</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="subscribe" class="subscribe">
+        <div class="container">
+            <h2>Subscribe & Follow</h2>
+            <p class="subscribe-text">Never miss an episode—subscribe on your favorite platform</p>
+            <div class="subscribe-buttons">
+                <a href="https://podcasts.apple.com" class="subscribe-btn" title="Apple Podcasts">
+                    <span class="platform-icon">🎙️</span>
+                    <span>Apple Podcasts</span>
+                </a>
+                <a href="https://open.spotify.com" class="subscribe-btn" title="Spotify">
+                    <span class="platform-icon">🎵</span>
+                    <span>Spotify</span>
+                </a>
+                <a href="https://www.google.com/podcasts" class="subscribe-btn" title="Google Podcasts">
+                    <span class="platform-icon">🔊</span>
+                    <span>Google Podcasts</span>
+                </a>
+                <a href="https://www.youtube.com" class="subscribe-btn" title="YouTube">
+                    <span class="platform-icon">📺</span>
+                    <span>YouTube</span>
+                </a>
+                <a href="https://www.rss.com" class="subscribe-btn" title="RSS Feed">
+                    <span class="platform-icon">📡</span>
+                    <span>RSS Feed</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="about">
+        <div class="container">
+            <h2>About the Podcast</h2>
+            <div class="about-content">
+                <div class="about-text">
+                    <p>Ancient Mythteries dives deep into the mysteries, myths, and forgotten stories that shaped human civilization. From the halls of forgotten empires to the riddles of lost artifacts, we explore the questions that historians are still trying to answer.</p>
+                    <p>Each episode is carefully researched and brought to life through interviews with experts, historians, and archaeologists who dedicate their lives to understanding our past.</p>
+                    <h3>Why listen?</h3>
+                    <ul>
+                        <li><strong>Expert interviews</strong> with archaeologists and historians</li>
+                        <li><strong>Detailed research</strong> into lesser-known mysteries</li>
+                        <li><strong>Engaging storytelling</strong> that brings history to life</li>
+                        <li><strong>New episodes</strong> every two weeks</li>
+                    </ul>
+                </div>
+                <div class="about-contact">
+                    <div class="contact-card">
+                        <h3>Get in Touch</h3>
+                        <p>Have a mystery you'd like us to investigate? Send us your suggestions:</p>
+                        <a href="mailto:hello@ancientmythteries.com" class="btn btn-secondary">Email Us</a>
+                        <div class="social-links">
+                            <a href="https://twitter.com" title="Twitter">𝕏</a>
+                            <a href="https://instagram.com" title="Instagram">📷</a>
+                            <a href="https://facebook.com" title="Facebook">f</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Ancient Mythteries. All rights reserved.</p>
+            <p class="footer-note">Exploring history, one mystery at a time.</p>
+        </div>
+    </footer>
+
+    <script>
+        function playEpisode(title) {
+            alert('▶️ Now playing: ' + title + '\n\nReplace this with your actual audio player.');
+        }
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
