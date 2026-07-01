@@ -304,13 +304,18 @@
 
         /* ── GAMES ── */
         .games-section {
-            background: #f0f0ff;
+            background: #f5f0ff;
         }
 
         .games-inner {
             max-width: 740px;
             margin: 0 auto;
             padding: 48px 24px 64px;
+        }
+
+        #games-list {
+            display: block;
+            min-height: 60px;
         }
 
         /* ── SEND A STORY ── */
@@ -829,32 +834,31 @@
         btn.textContent = '📤 Sending...';
         msg.textContent = '';
 
+        const payload = { name: name || 'Anonymous', title, story: body };
+        if (email) payload.email = email;
+
         try {
             const res = await fetch('https://formspree.io/f/mgojnklj', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify({
-                    name,
-                    title,
-                    story: body,
-                    _replyto: email || undefined,
-                    _autoresponse: email ? 'This is an automated email and we would like to let you know that we have received your story!' : undefined
-                })
+                body: JSON.stringify(payload)
             });
 
             if (res.ok) {
                 msg.style.color = 'var(--teal-dk)';
-                msg.textContent = '✅ Story sent! Thanks, ' + name + '!';
+                msg.textContent = '✅ Story sent! Thanks' + (name ? ', ' + name : '') + '!';
                 document.getElementById('story-name').value = '';
                 document.getElementById('story-email').value = '';
                 document.getElementById('story-title').value = '';
                 document.getElementById('story-body').value = '';
             } else {
-                throw new Error();
+                const data = await res.json();
+                throw new Error(data?.error || 'Failed');
             }
-        } catch {
+        } catch (e) {
             msg.style.color = 'var(--rust)';
             msg.textContent = '❌ Something went wrong — please try again!';
+            console.error(e);
         }
 
         btn.disabled = false;
