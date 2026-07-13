@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlanwiseER — trip idea assistant</title>
+<meta name="description" content="The PlanWise idea assistant. Connects to your PlanWise trip, finds real places nearby, and adds the ones you like straight to the board.">
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F9F4ED; --paper:#ffffff; --ink:#2A211C; --muted:#7a6f66; --faint:#a89c92;
+  --coral:#E2643B; --coral-d:#c9502a; --jade:#1F7A6D; --gold:#E9B44C; --line:#e7ddd1;
+  --shadow:0 10px 30px rgba(60,40,25,.10); --shadow-sm:0 4px 14px rgba(60,40,25,.08);
+  --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:var(--sans); color:var(--ink); background:var(--cream);
+  -webkit-font-smoothing:antialiased; line-height:1.5;
+}
+.greca{
+  height:26px; width:100%;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='26' viewBox='0 0 48 26'%3E%3Cpath d='M0 13 H6 V4 H24 V22 H42 V13 H48' fill='none' stroke='%23E2643B' stroke-width='5'/%3E%3C/svg%3E") repeat-x center;
+  background-size:auto 26px;
+}
+header{background:var(--paper); border-bottom:1px solid var(--line)}
+.bar{max-width:960px; margin:0 auto; padding:16px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+.mark{width:40px; height:40px; flex:0 0 auto}
+.brand h1{font-family:var(--serif); font-weight:700; font-size:22px; margin:0; letter-spacing:-.01em}
+.brand h1 .er{color:var(--coral)}
+.brand p{margin:1px 0 0; font-size:12.5px; color:var(--muted)}
+.status{margin-left:auto; display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); flex-wrap:wrap}
+.pill{display:inline-flex; align-items:center; gap:7px; background:var(--cream); border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-weight:600; color:var(--ink); font-size:12.5px}
+.pill .dot{width:7px; height:7px; border-radius:50%; background:var(--jade)}
+.who{font-weight:600; color:var(--ink); font-size:13px}
+.btn-link{background:none; border:0; color:var(--coral); font-weight:600; cursor:pointer; font-size:13px; padding:2px; font-family:inherit}
+.btn-link:hover{text-decoration:underline}
+main{max-width:960px; margin:0 auto; padding:30px 20px 70px}
+
+.eyebrow{font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--coral); font-weight:700; margin:0 0 8px}
+h2.h{font-family:var(--serif); font-weight:600; font-size:30px; line-height:1.12; margin:0 0 10px; letter-spacing:-.015em}
+h3.h{font-family:var(--serif); font-weight:600; font-size:20px; margin:0 0 12px}
+.lede{color:var(--muted); font-size:15.5px; max-width:56ch; margin:0 0 22px}
+
+.card{background:var(--paper); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow-sm)}
+.pad{padding:22px}
+.fld{display:block; margin-bottom:14px}
+.fld span{display:block; font-size:13px; font-weight:600; margin-bottom:6px}
+.fld input,.fld textarea{
+  width:100%; font-family:inherit; font-size:15px; color:var(--ink);
+  padding:11px 13px; border:1px solid var(--line); border-radius:11px; background:var(--paper);
+}
+.fld input:focus,.fld textarea:focus{outline:2px solid var(--coral); outline-offset:1px; border-color:transparent}
+.hint{font-size:12.5px; color:var(--faint); margin-top:-6px}
+
+.btn{font-family:inherit; font-weight:600; font-size:14.5px; border-radius:11px; padding:11px 18px; cursor:pointer; border:1px solid transparent; transition:transform .06s ease, background .15s ease}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--ink); outline-offset:2px}
+.btn-primary{background:var(--ink); color:#fff}
+.btn-primary:hover{background:#3c302a}
+.btn-coral{background:var(--coral); color:#fff}
+.btn-coral:hover{background:var(--coral-d)}
+.btn-ghost{background:var(--paper); color:var(--ink); border-color:var(--line)}
+.btn-ghost:hover{background:var(--cream)}
+.btn-sm{padding:8px 14px; font-size:13px; border-radius:9px}
+.btn[disabled]{opacity:.55; cursor:default; transform:none}
+.row{display:flex; gap:10px; flex-wrap:wrap}
+
+.recent{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px}
+.recent button{background:var(--cream); border:1px solid var(--line); border-radius:999px; padding:6px 13px; font-weight:600; font-size:13px; color:var(--ink); cursor:pointer; font-family:inherit}
+.recent button:hover{border-color:var(--coral); color:var(--coral)}
+
+.chips{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 24px}
+.chip{background:var(--paper); border:1px solid var(--line); border-radius:999px; padding:8px 15px; font-weight:600; font-size:13.5px; color:var(--muted); cursor:pointer; font-family:inherit; transition:all .12s ease}
+.chip:hover{border-color:var(--coral); color:var(--coral)}
+.chip[aria-pressed="true"]{background:var(--coral); border-color:var(--coral); color:#fff}
+
+.trip-hero{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:6px}
+.trip-hero .place{color:var(--muted); font-size:15px; margin-top:2px}
+.board-note{font-size:13.5px; color:var(--muted); background:var(--cream); border:1px solid var(--line); border-radius:11px; padding:10px 14px; display:inline-flex; align-items:center; gap:8px; margin-bottom:20px}
+
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:16px}
+.sug{display:flex; flex-direction:column; padding:18px; min-height:0}
+.sug .cat{font-size:11px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; color:var(--jade); margin-bottom:8px}
+.sug h4{font-family:var(--serif); font-weight:600; font-size:18px; margin:0 0 6px; line-height:1.2}
+.sug .note{font-size:13.5px; color:var(--muted); margin:0 0 16px; flex:1; text-transform:capitalize}
+.sug .add{align-self:flex-start}
+.sug.added{border-color:#cfe6df; background:#f4fbf8}
+.sug .added-tag{display:inline-flex; align-items:center; gap:7px; color:var(--jade); font-weight:700; font-size:14px}
+
+.thinking{display:flex; align-items:center; gap:12px; color:var(--muted); font-size:15px; padding:14px 0}
+.dots{display:inline-flex; gap:5px}
+.dots i{width:8px; height:8px; border-radius:50%; background:var(--coral); animation:bounce 1s infinite ease-in-out}
+.dots i:nth-child(2){animation-delay:.15s; background:var(--gold)}
+.dots i:nth-child(3){animation-delay:.3s; background:var(--jade)}
+@keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-6px);opacity:1}}
+
+.notice{border:1px solid var(--line); background:var(--cream); border-radius:13px; padding:16px 18px; font-size:14.5px; color:var(--ink)}
+.notice.warn{border-color:#f0d3b0; background:#fdf5e9}
+.center{text-align:center}
+.more-wrap{text-align:center; margin-top:26px}
+.footer-greca{margin-top:50px}
+.preview-flag{display:inline-block; background:var(--gold); color:#4a3410; font-weight:700; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:3px 9px; border-radius:999px; margin-left:8px}
+a.link{color:var(--coral); font-weight:600; text-decoration:none}
+a.link:hover{text-decoration:underline}
+@media (max-width:520px){ h2.h{font-size:25px} .bar{padding:14px 16px} main{padding:24px 16px 60px} }
+@media (prefers-reduced-motion:reduce){ .dots i{animation:none} .btn{transition:none} }
+</style>
+</head>
+<body>
+<div class="greca"></div>
+<header>
+  <div class="bar">
+    <svg class="mark" viewBox="0 0 48 48" aria-hidden="true">
+      <rect x="2" y="2" width="44" height="44" rx="11" fill="var(--coral)"/>
+      <path d="M9 30 H15 V16 H33 V30" fill="none" stroke="var(--cream)" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="24" cy="33" r="4" fill="var(--jade)"/>
+    </svg>
+    <div class="brand">
+      <h1>Planwise<span class="er">ER</span></h1>
+      <p>Your PlanWise idea assistant</p>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+</header>
+<main id="app"></main>
+<div class="greca footer-greca"></div>
+
+<script>
+"use strict";
+
+/* ---------------- state + storage ---------------- */
+const LS = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k){ try { localStorage.removeItem(k); } catch {} }
+};
+const CATS = ["Eat & drink","Sights","Neighborhoods","Day trips","Nightlife","Where to stay"];
+const CHIP_ORDER = ["Sights","Eat & drink","Neighborhoods","Day trips","Nightlife","Where to stay"];
+
+// PlanWise's own Firebase Realtime Database (project: planwise-73ada)
+const DEFAULT_DB = "https://planwise-73ada-default-rtdb.firebaseio.com";
+
+const state = {
+  db: LS.get("pwe_db") || DEFAULT_DB,   // Firebase Realtime Database URL
+  user: LS.get("pwe_session") || null,  // logged-in PlanWise account {username, displayName}
+  code: null, fid: null, fam: null,
+  plans: {},                      // existing plans on the board (id -> plan)
+  planTitles: new Set(),          // normalized existing titles (for dedupe)
+  geo: null,                      // {lat, lon, name}
+  cat: "Sights",
+  pools: {},                      // cat -> shuffled suggestion array
+  cursor: {},                     // cat -> index into pool
+  added: new Set(),               // normalized titles added this session
+  preview: false, previewDest: ""
+};
+
+const app = document.getElementById("app");
+const statusEl = document.getElementById("status");
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+
+/* ---------------- Firebase REST ---------------- */
+function normalizeDbUrl(raw){
+  if(!raw) return null;
+  let s = raw.trim();
+  // pasted a whole config object? pull databaseURL out of it
+  const m = s.match(/databaseURL['"]?\s*[:=]\s*['"]([^'"]+)['"]/);
+  if(m) s = m[1];
+  s = s.trim().replace(/\/+$/,"");
+  if(!/^https?:\/\//.test(s)) s = "https://" + s;
+  if(!/firebaseio\.com|firebasedatabase\.app/.test(s)) return null;
+  return s;
+}
+async function fbGet(path){
+  const r = await fetch(state.db + "/" + path + ".json");
+  if(!r.ok) throw new Error("Firebase read failed (" + r.status + ")");
+  return r.json();
+}
+async function fbPush(path, body){
+  const r = await fetch(state.db + "/" + path + ".json", {
+    method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error("Firebase write failed (" + r.status + ")");
+  return r.json();
+}
+
+/* ---------------- login against PlanWise accounts ---------------- */
+async function sha256(text){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+}
+async function doLogin(usernameRaw, pass){
+  const input = usernameRaw.trim();
+  if(!input) return "Enter your PlanWise username.";
+  if(!pass) return "Enter your password.";
+  const lower = input.toLowerCase();
+  let u = null;
+  // 1. direct lookup: users/{username}
+  try { u = await fbGet("users/" + encodeURIComponent(lower)); } catch(e){ return "Couldn't reach PlanWise. Check your connection."; }
+  // 2. fallback: they may have typed their display name
+  if(!u){
+    try {
+      const all = await fbGet("users");
+      if(all) for(const rec of Object.values(all)){
+        if(rec && (String(rec.username).toLowerCase() === lower || String(rec.displayName).toLowerCase() === lower)){ u = rec; break; }
+      }
+    } catch {}
+  }
+  if(!u) return "No PlanWise account with that username.";
+  const hash = await sha256(pass);
+  if(u.pass && u.pass !== hash) return "Wrong password. Try again.";
+  const session = { username: u.username, displayName: u.displayName || u.username };
+  state.user = session; LS.set("pwe_session", session);
+  return null;
+}
+function logout(){
+  state.user = null; LS.del("pwe_session");
+  state.fam = null; state.fid = null; state.preview = false;
+  state.pools = {}; state.cursor = {}; state.added = new Set();
+  renderLogin();
+}
+
+/* ---------------- resolve a PlanWise code -> family ---------------- */
+async function resolveCode(codeRaw){
+  const c = codeRaw.trim();
+  const tries = [c, c.toUpperCase()];
+  // 1. codes/{code} -> familyId  (how PlanWise stores invite codes)
+  for(const k of tries){
+    try { const v = await fbGet("codes/" + encodeURIComponent(k)); if(typeof v === "string" && v) return v; } catch {}
+  }
+  // 2. fallback: scan families for one whose own .code matches
+  try {
+    const fams = await fbGet("families");
+    if(fams) for(const [id,f] of Object.entries(fams)){
+      if(f && (f.code === c || String(f.code).toUpperCase() === c.toUpperCase())) return id;
+    }
+  } catch {}
+  return null;
+}
+
+async function connectTrip(codeRaw){
+  const fid = await resolveCode(codeRaw);
+  if(!fid) throw new Error("That code didn't match a trip. Double-check it, or use a family invite code from PlanWise.");
+  const fam = await fbGet("families/" + fid);
+  if(!fam) throw new Error("Found the code, but that trip no longer exists.");
+  const plans = (await fbGet("plans/" + fid)) || {};
+  state.fid = fid; state.fam = fam; state.code = codeRaw.trim().toUpperCase();
+  state.plans = plans;
+  state.planTitles = new Set(Object.values(plans).map(p => norm(p.title)));
+  // remember recent codes
+  const recent = (LS.get("pwe_recent") || []).filter(x => x.code !== state.code);
+  recent.unshift({ code: state.code, name: fam.name || "Trip", dest: fam.destination || "" });
+  LS.set("pwe_recent", recent.slice(0,6));
+  return fam;
+}
+
+/* ---------------- geocode + place search (keyless) ---------------- */
+function haversine(la1,lo1,la2,lo2){
+  const R=6371, d=x=>x*Math.PI/180;
+  const a=Math.sin(d(la2-la1)/2)**2 + Math.cos(d(la1))*Math.cos(d(la2))*Math.sin(d(lo2-lo1)/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+async function geocode(place){
+  const cache = LS.get("pwe_geo") || {};
+  const key = norm(place);
+  if(cache[key]) return cache[key];
+  const u = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(place);
+  const r = await fetch(u, { headers:{ "Accept":"application/json" } });
+  const j = await r.json();
+  if(!j || !j.length) throw new Error('I couldn\u2019t find "' + place + '" on the map. Try a nearby city name.');
+  const g = { lat:+j[0].lat, lon:+j[0].lon, name:j[0].display_name };
+  cache[key] = g; LS.set("pwe_geo", cache);
+  return g;
+}
+
+const CAT_QUERY = {
+  "Eat & drink":   { r:3500,  ql:a=>`node[amenity~"restaurant|cafe|bar|bakery|ice_cream"][name](${a});` },
+  "Sights":        { r:6000,  ql:a=>`(node[tourism~"attraction|museum|artwork|viewpoint|gallery|zoo|aquarium|theme_park"][name](${a});node[historic~"monument|memorial|castle|ruins|archaeological_site|building"][name](${a}););` },
+  "Neighborhoods": { r:7000,  ql:a=>`node[place~"neighbourhood|suburb|quarter"][name](${a});` },
+  "Day trips":     { r:55000, ql:a=>`(node[tourism~"attraction|theme_park|zoo|viewpoint"][name](${a});node[place~"town|village"][name](${a}););` },
+  "Nightlife":     { r:4500,  ql:a=>`node[amenity~"bar|pub|nightclub|biergarten"][name](${a});` },
+  "Where to stay": { r:5000,  ql:a=>`node[tourism~"hotel|guest_house|hostel"][name](${a});` }
+};
+const OVERPASS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+];
+async function overpass(ql){
+  let lastErr;
+  for(const ep of OVERPASS){
+    try {
+      const r = await fetch(ep, { method:"POST", headers:{ "Content-Type":"application/x-www-form-urlencoded" }, body:"data=" + encodeURIComponent(ql) });
+      if(!r.ok) { lastErr = new Error("map service " + r.status); continue; }
+      const j = await r.json();
+      return j.elements || [];
+    } catch(e){ lastErr = e; }
+  }
+  throw lastErr || new Error("Couldn't reach the map service.");
+}
+
+function toSuggestion(el, cat, geo){
+  const t = el.tags || {}; const name = t.name;
+  if(!name) return null;
+  const nk = norm(name);
+  if(nk === norm(geo.name.split(",")[0])) return null; // skip the destination itself
+  let note = "";
+  if(cat === "Eat & drink"){
+    const kind = t.cuisine ? t.cuisine.split(";")[0].replace(/_/g," ") : (t.amenity || "spot");
+    note = kind;
+  } else if(cat === "Sights"){
+    note = (t.tourism || t.historic || "point of interest").replace(/_/g," ");
+  } else if(cat === "Neighborhoods"){
+    note = "neighborhood to wander";
+  } else if(cat === "Day trips"){
+    note = t.place ? ("nearby " + t.place) : (t.tourism || "day trip").replace(/_/g," ");
+  } else if(cat === "Nightlife"){
+    note = (t.amenity || "spot").replace(/_/g," ");
+  } else if(cat === "Where to stay"){
+    note = (t.tourism || "stay").replace(/_/g," ");
+  }
+  const lat = el.lat ?? (el.center && el.center.lat), lon = el.lon ?? (el.center && el.center.lon);
+  if(lat && lon && geo){
+    const d = haversine(geo.lat, geo.lon, lat, lon);
+    if(d > 1.2) note += (note?" \u00b7 ":"") + (d<10 ? d.toFixed(1) : Math.round(d)) + " km away";
+  }
+  return { title:name, cat, note, nk };
+}
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+async function ensurePool(cat){
+  if(state.pools[cat]) return;
+  const q = CAT_QUERY[cat];
+  const around = "around:" + q.r + "," + state.geo.lat + "," + state.geo.lon;
+  const ql = "[out:json][timeout:25];" + q.ql(around) + "out center " + (cat==="Day trips"?90:150) + ";";
+  const els = await overpass(ql);
+  const seen = new Set();
+  const list = [];
+  for(const el of els){
+    const s = toSuggestion(el, cat, state.geo);
+    if(!s) continue;
+    if(seen.has(s.nk)) continue;
+    if(state.planTitles.has(s.nk)) continue;     // already on the board
+    if(state.added.has(s.nk)) continue;           // added this session
+    seen.add(s.nk); list.push(s);
+  }
+  state.pools[cat] = shuffle(list);
+  state.cursor[cat] = 0;
+}
+
+/* ---------------- renders ---------------- */
+function renderStatus(){
+  if(state.user){
+    const trip = state.fam ? `<span class="pill"><span class="dot"></span>${esc(state.fam.name||"Trip")}</span>` +
+      `<button class="btn-link" data-act="switch">Switch trip</button>` : "";
+    statusEl.innerHTML = trip +
+      `<span class="who">${esc(state.user.displayName)}</span>` +
+      `<button class="btn-link" data-act="logout">Log out</button>`;
+  } else {
+    statusEl.innerHTML = `<button class="btn-link" data-act="show-login">Log in</button>`;
+  }
+}
+
+function renderLogin(){
+  renderStatus();
+  app.innerHTML = `
+    <p class="eyebrow">Sign in to PlanWise</p>
+    <h2 class="h">Log in to plan with PlanwiseER.</h2>
+    <p class="lede">Use the same username and password as your PlanWise account. PlanwiseER adds ideas to your trips as you, so it needs to know who you are.</p>
+    <div class="card pad" style="max-width:440px">
+      <label class="fld"><span>PlanWise username</span>
+        <input id="lg-user" placeholder="your username" autocomplete="username" spellcheck="false"></label>
+      <label class="fld"><span>Password</span>
+        <input id="lg-pass" type="password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022" autocomplete="current-password"></label>
+      <button class="btn btn-primary" data-act="login" style="width:100%">Log in</button>
+      <p id="lg-err" class="notice warn" style="display:none;margin-top:16px"></p>
+    </div>
+    <p class="hint" style="margin-top:18px">No account yet? Create one in PlanWise first, then come back here.</p>
+  `;
+}
+
+function renderTripSelect(){
+  renderStatus();
+  const recent = LS.get("pwe_recent") || [];
+  app.innerHTML = `
+    <p class="eyebrow">Hi ${esc(state.user.displayName)} \u00b7 Pick a trip</p>
+    <h2 class="h">Which trip are we planning?</h2>
+    <p class="lede">Enter the invite code for the trip (the same code families use to join it in PlanWise). PlanwiseER will look up where you're going.</p>
+    <div class="card pad" style="max-width:520px">
+      <label class="fld"><span>Trip or family invite code</span>
+        <input id="code-in" placeholder="e.g. SUNROAD" autocomplete="off" spellcheck="false" style="text-transform:uppercase; letter-spacing:.12em; font-weight:700"></label>
+      <button class="btn btn-primary" data-act="load-trip">Find trip</button>
+      <p id="code-err" class="notice warn" style="display:none;margin-top:16px"></p>
+      ${recent.length ? `<div style="margin-top:18px"><p class="hint" style="margin-bottom:6px">Recent trips</p><div class="recent">${
+        recent.map(r=>`<button data-recent="${esc(r.code)}">${esc(r.name)} \u00b7 ${esc(r.code)}</button>`).join("")
+      }</div></div>` : ""}
+    </div>
+  `;
+}
+
+function renderSuggest(){
+  renderStatus();
+  const f = state.fam;
+  const boardCount = Object.keys(state.plans).length;
+  app.innerHTML = `
+    <div class="trip-hero">
+      <div>
+        <p class="eyebrow">PlanwiseER for</p>
+        <h2 class="h" style="margin-bottom:2px">${esc(f.name || "Your trip")}${state.preview?'<span class="preview-flag">Preview</span>':""}</h2>
+        <div class="place">\u{1F4CD} ${esc(f.destination || state.previewDest)}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" data-act="${state.preview?'preview-change':'switch'}">${state.preview?'Change place':'Switch trip'}</button>
+    </div>
+    <div class="board-note">${state.preview
+      ? "\u2728 Preview mode \u2014 connect a trip to add ideas to a real board."
+      : (boardCount ? `\u2728 ${boardCount} plan${boardCount===1?"":"s"} already on this board \u2014 I'll skip repeats.` : "\u2728 The board's empty \u2014 let's fill it.")}</div>
+
+    <p class="eyebrow">What kind of ideas?</p>
+    <div class="chips" id="chips">
+      ${CHIP_ORDER.map(c=>`<button class="chip" data-cat="${esc(c)}" aria-pressed="${c===state.cat}">${esc(c)}</button>`).join("")}
+      <button class="chip" data-cat="__surprise" aria-pressed="false">\u2728 Surprise me</button>
+    </div>
+
+    <div id="results"></div>
+  `;
+  loadSuggestions(true);
+}
+
+function suggestionCard(s, idx){
+  const added = state.added.has(s.nk);
+  return `<div class="sug card${added?" added":""}" data-nk="${esc(s.nk)}">
+    <div class="cat">${esc(s.cat)}</div>
+    <h4>${esc(s.title)}</h4>
+    <p class="note">${esc(s.note||"")}</p>
+    ${added
+      ? `<span class="added-tag">\u2713 Added to trip</span>`
+      : (state.preview
+          ? `<button class="btn btn-ghost btn-sm add" disabled title="Connect a trip to add">Add to trip</button>`
+          : `<button class="btn btn-coral btn-sm add" data-add="${idx}">Add to trip</button>`)}
+  </div>`;
+}
+
+async function loadSuggestions(reset){
+  const box = document.getElementById("results");
+  if(!box) return;
+  const cat = state.cat;
+  if(reset){
+    box.innerHTML = `<div class="thinking"><span class="dots"><i></i><i></i><i></i></span> PlanwiseER is looking around ${esc(state.fam.destination||state.previewDest)}\u2026</div>`;
+  }
+  try {
+    await ensurePool(cat);
+    const pool = state.pools[cat] || [];
+    if(!pool.length){
+      box.innerHTML = `<div class="notice">I couldn't find fresh <b>${esc(cat.toLowerCase())}</b> ideas near ${esc(state.fam.destination||state.previewDest)} right now. Try another category, or a bigger nearby city.</div>`;
+      return;
+    }
+    renderBatch(true);
+  } catch(e){
+    box.innerHTML = `<div class="notice warn">${esc(e.message || "Something went wrong reaching the map service.")} <button class="btn-link" data-act="retry">Try again</button></div>`;
+  }
+}
+
+function renderBatch(reset){
+  const box = document.getElementById("results");
+  const cat = state.cat;
+  const pool = state.pools[cat] || [];
+  const per = 6;
+  let cur = state.cursor[cat] || 0;
+  const slice = pool.slice(cur, cur + per);
+  state.cursor[cat] = cur + slice.length;
+
+  const cardsHtml = slice.map((s,i)=>suggestionCard(s, cur + i)).join("");
+  const remaining = pool.length - state.cursor[cat];
+  const moreBtn = remaining > 0
+    ? `<div class="more-wrap"><button class="btn btn-ghost" data-act="more">More ideas (${remaining} left)</button></div>`
+    : `<div class="more-wrap"><span class="hint">That's every ${esc(cat.toLowerCase())} idea I found nearby. Try another category above.</span></div>`;
+
+  if(reset){
+    box.innerHTML = `<div class="grid" id="grid">${cardsHtml}</div>${moreBtn}`;
+  } else {
+    const grid = document.getElementById("grid");
+    grid.insertAdjacentHTML("beforeend", cardsHtml);
+    const mw = box.querySelector(".more-wrap");
+    if(mw) mw.outerHTML = moreBtn;
+  }
+}
+
+async function addToTrip(idx, btn){
+  const cat = state.cat;
+  const s = (state.pools[cat] || [])[idx];
+  if(!s || state.preview) return;
+  btn.disabled = true; btn.textContent = "Adding\u2026";
+  const me = (state.user.username || "").toLowerCase();
+  const plan = {
+    title: s.title,
+    cat: s.cat,
+    note: s.note || "",
+    addedBy: me,
+    addedByName: state.user.displayName,
+    via: "planwiseer",
+    createdAt: Date.now(),
+    votes: { [me]: true }
+  };
+  try {
+    await fbPush("plans/" + state.fid, plan);
+    state.added.add(s.nk);
+    state.planTitles.add(s.nk);
+    const card = btn.closest(".sug");
+    card.classList.add("added");
+    btn.outerHTML = `<span class="added-tag">\u2713 Added to trip</span>`;
+  } catch(e){
+    btn.disabled = false; btn.textContent = "Add to trip";
+    const card = btn.closest(".sug");
+    card.insertAdjacentHTML("beforeend", `<p class="hint" style="color:var(--coral-d);margin-top:8px">Couldn't add \u2014 ${esc(e.message)}</p>`);
+  }
+}
+
+/* ---------------- flow helpers ---------------- */
+async function startPreview(dest){
+  state.preview = true; state.previewDest = dest;
+  state.fam = { name: dest, destination: dest };
+  state.pools = {}; state.cursor = {}; state.added = new Set(); state.planTitles = new Set();
+  try {
+    state.geo = await geocode(dest);
+    renderSuggest();
+  } catch(e){ throw e; }
+}
+
+/* ---------------- events ---------------- */
+document.addEventListener("click", async (ev) => {
+  const t = ev.target.closest("[data-act],[data-recent],[data-cat],[data-add]");
+  if(!t) return;
+
+  // category chips
+  if(t.dataset.cat !== undefined){
+    let cat = t.dataset.cat;
+    if(cat === "__surprise"){ cat = CHIP_ORDER[Math.floor(Math.random()*CHIP_ORDER.length)]; }
+    state.cat = cat;
+    document.querySelectorAll("#chips .chip").forEach(c=>c.setAttribute("aria-pressed", c.dataset.cat===cat ? "true":"false"));
+    loadSuggestions(true);
+    return;
+  }
+  // add a suggestion
+  if(t.dataset.add !== undefined){ addToTrip(+t.dataset.add, t); return; }
+  // recent trip
+  if(t.dataset.recent !== undefined){
+    const err = document.getElementById("code-err");
+    try { await connectTrip(t.dataset.recent); state.preview=false; state.geo = await geocode(state.fam.destination); renderSuggest(); }
+    catch(e){ if(err){ err.style.display="block"; err.textContent = e.message; } }
+    return;
+  }
+
+  const act = t.dataset.act;
+  if(act === "login"){
+    const err = document.getElementById("lg-err");
+    const btn = t; btn.disabled = true; const orig = btn.textContent; btn.textContent = "Logging in\u2026";
+    err.style.display = "none";
+    const msg = await doLogin(document.getElementById("lg-user").value, document.getElementById("lg-pass").value);
+    if(msg){ btn.disabled = false; btn.textContent = orig; err.style.display = "block"; err.textContent = msg; return; }
+    renderTripSelect();
+  }
+  else if(act === "logout"){ logout(); }
+  else if(act === "show-login"){ renderLogin(); }
+  else if(act === "load-trip"){
+    const err = document.getElementById("code-err");
+    const code = document.getElementById("code-in").value;
+    if(!code.trim()){ err.style.display="block"; err.textContent="Enter a trip code first."; return; }
+    err.style.display="none";
+    const btn = t; btn.disabled=true; const orig=btn.textContent; btn.textContent="Looking\u2026";
+    try {
+      await connectTrip(code);
+      state.preview = false;
+      state.geo = await geocode(state.fam.destination || state.fam.name);
+      renderSuggest();
+    } catch(e){
+      btn.disabled=false; btn.textContent=orig;
+      err.style.display="block"; err.textContent = e.message;
+    }
+  }
+  else if(act === "switch"){ state.fam=null; state.fid=null; state.preview=false; renderTripSelect(); }
+  else if(act === "more"){ renderBatch(false); }
+  else if(act === "retry"){ loadSuggestions(true); }
+});
+
+// Enter key submits the visible form
+document.addEventListener("keydown", (ev) => {
+  if(ev.key !== "Enter") return;
+  const id = ev.target && ev.target.id;
+  if(id === "lg-user" || id === "lg-pass"){ ev.preventDefault(); document.querySelector('[data-act="login"]').click(); }
+  if(id === "code-in"){ ev.preventDefault(); document.querySelector('[data-act="load-trip"]').click(); }
+});
+
+/* ---------------- boot ---------------- */
+if(state.user) renderTripSelect(); else renderLogin();
+</script>
+</body>
+</html>
