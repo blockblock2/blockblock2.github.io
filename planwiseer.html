@@ -151,12 +151,14 @@ const state = {
   db: LS.get("pwe_db") || DEFAULT_DB,   // Firebase Realtime Database URL
   user: LS.get("pwe_session") || null,  // logged-in PlanWise account {username, displayName}
   code: null, fid: null, fam: null,
+  stay: null,                      // {name, lat, lon} \u2014 where they're staying, if given (biases suggestions closer to it)
   plans: {},                      // existing plans on the board (id -> plan)
   planTitles: new Set(),          // normalized existing titles (for dedupe)
   geo: null,                      // {lat, lon, name}
   cat: "Sights",
-  pools: {},                      // cat -> shuffled suggestion array
-  cursor: {},                     // cat -> index into pool
+  seen: {},                       // cat -> Set of normalized titles already shown/added (across batches)
+  radius: {},                     // cat -> current search radius in meters (widens if a batch comes up short)
+  byNk: {},                       // normalized title -> suggestion object (lookup for "Add to trip")
   added: new Set(),               // normalized titles added this session
   preview: false, previewDest: ""
 };
@@ -223,7 +225,7 @@ async function doLogin(usernameRaw, pass){
 function logout(){
   state.user = null; LS.del("pwe_session");
   state.fam = null; state.fid = null; state.preview = false;
-  state.pools = {}; state.cursor = {}; state.added = new Set();
+  state.seen = {}; state.radius = {}; state.byNk = {}; state.added = new Set();
   renderLogin();
 }
 
@@ -267,6 +269,7 @@ async function connectTrip(codeRaw){
   state.fam = { name: tripName, destination, famName: fam && fam.name };
   state.plans = plans;
   state.planTitles = new Set(Object.values(plans).map(p => norm(p.title)));
+  state.seen = {}; state.radius = {}; state.byNk = {}; state.added = new Set();
 
   const recent = (LS.get("pwe_recent") || []).filter(x => x.code !== state.code);
   recent.unshift({ code: state.code, name: state.fam.name, dest: destination });
@@ -349,24 +352,43 @@ function toSuggestion(el, cat, geo){
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
-async function ensurePool(cat){
-  if(state.pools[cat]) return;
+// Runs one fresh location search and returns up to `need` new (not-yet-seen) results.
+// Widens the search radius and retries a few times if the first pass comes up short,
+// since a fresh 6-result query near an already-picked-over area may turn up few new spots.
+async function fetchBatch(cat, need){
   const q = CAT_QUERY[cat];
-  const around = "around:" + q.r + "," + state.geo.lat + "," + state.geo.lon;
-  const ql = "[out:json][timeout:25];" + q.ql(around) + "out center " + (cat==="Day trips"?90:150) + ";";
-  const els = await overpass(ql);
-  const seen = new Set();
-  const list = [];
-  for(const el of els){
-    const s = toSuggestion(el, cat, state.geo);
-    if(!s) continue;
-    if(seen.has(s.nk)) continue;
-    if(state.planTitles.has(s.nk)) continue;     // already on the board
-    if(state.added.has(s.nk)) continue;           // added this session
-    seen.add(s.nk); list.push(s);
+  if(!state.seen[cat]) state.seen[cat] = new Set();
+  if(!state.radius[cat]) state.radius[cat] = q.r;
+
+  const collected = [];
+  let attempts = 0;
+  while(collected.length < need && attempts < 4){
+    attempts++;
+    const r = state.radius[cat];
+    const around = "around:" + r + "," + state.geo.lat + "," + state.geo.lon;
+    const ql = "[out:json][timeout:25];" + q.ql(around) + "out center " + (cat==="Day trips"?90:150) + ";";
+    const els = await overpass(ql);
+    const fresh = [];
+    const dupCheck = new Set();
+    for(const el of els){
+      const s = toSuggestion(el, cat, state.geo);
+      if(!s) continue;
+      if(dupCheck.has(s.nk)) continue;
+      if(state.seen[cat].has(s.nk)) continue;       // already shown in an earlier batch
+      if(state.planTitles.has(s.nk)) continue;      // already on the board
+      if(state.added.has(s.nk)) continue;            // added this session
+      dupCheck.add(s.nk); fresh.push(s);
+    }
+    shuffle(fresh);
+    for(const s of fresh){
+      if(collected.length >= need) break;
+      collected.push(s);
+      state.seen[cat].add(s.nk);
+    }
+    if(collected.length < need) state.radius[cat] = Math.round(r * 1.6); // cast a wider net next pass
   }
-  state.pools[cat] = shuffle(list);
-  state.cursor[cat] = 0;
+  collected.forEach(s => { state.byNk[s.nk] = s; });
+  return collected;
 }
 
 /* ---------------- renders ---------------- */
@@ -420,18 +442,41 @@ function renderTripSelect(){
   `;
 }
 
+function renderStayStep(){
+  renderStatus();
+  const f = state.fam;
+  app.innerHTML = `
+    <p class="eyebrow">One more thing</p>
+    <h2 class="h">Where are you staying?</h2>
+    <p class="lede">Give me the hotel name or address in ${esc(f.destination)} and I'll find ideas closer to where you'll actually be \u2014 not just the middle of the city.</p>
+    <div class="card pad" style="max-width:520px">
+      <label class="fld"><span>Hotel name or address</span>
+        <input id="stay-in" placeholder="e.g. Hotel Le Marais, or 12 Rue de Rivoli" autocomplete="off" spellcheck="false"></label>
+      <div class="row">
+        <button class="btn btn-primary" data-act="save-stay">Continue</button>
+        <button class="btn btn-ghost" data-act="skip-stay">Skip \u2014 just use ${esc(f.destination)}</button>
+      </div>
+      <p id="stay-err" class="notice warn" style="display:none;margin-top:16px"></p>
+    </div>
+  `;
+}
+
 function renderSuggest(){
   renderStatus();
   const f = state.fam;
   const boardCount = Object.keys(state.plans).length;
+  const placeLabel = state.stay ? state.stay.name : (f.destination || state.previewDest);
   app.innerHTML = `
     <div class="trip-hero">
       <div>
         <p class="eyebrow">PlanwiseER for</p>
         <h2 class="h" style="margin-bottom:2px">${esc(f.name || "Your trip")}${state.preview?'<span class="preview-flag">Preview</span>':""}</h2>
-        <div class="place">\u{1F4CD} ${esc(f.destination || state.previewDest)}</div>
+        <div class="place">\u{1F4CD} ${esc(placeLabel)}</div>
       </div>
-      <button class="btn btn-ghost btn-sm" data-act="${state.preview?'preview-change':'switch'}">${state.preview?'Change place':'Switch trip'}</button>
+      <div class="row" style="gap:8px">
+        ${(!state.preview) ? `<button class="btn btn-ghost btn-sm" data-act="change-stay">${state.stay?'Change stay':'Add where I\u2019m staying'}</button>` : ""}
+        <button class="btn btn-ghost btn-sm" data-act="${state.preview?'preview-change':'switch'}">${state.preview?'Change place':'Switch trip'}</button>
+      </div>
     </div>
     <div class="board-note">${state.preview
       ? "\u2728 Preview mode \u2014 connect a trip to add ideas to a real board."
@@ -448,7 +493,7 @@ function renderSuggest(){
   loadSuggestions(true);
 }
 
-function suggestionCard(s, idx){
+function suggestionCard(s){
   const added = state.added.has(s.nk);
   return `<div class="sug card${added?" added":""}" data-nk="${esc(s.nk)}">
     <div class="cat">${esc(s.cat)}</div>
@@ -458,58 +503,59 @@ function suggestionCard(s, idx){
       ? `<span class="added-tag">\u2713 Added to trip</span>`
       : (state.preview
           ? `<button class="btn btn-ghost btn-sm add" disabled title="Connect a trip to add">Add to trip</button>`
-          : `<button class="btn btn-coral btn-sm add" data-add="${idx}">Add to trip</button>`)}
+          : `<button class="btn btn-coral btn-sm add" data-add="${esc(s.nk)}">Add to trip</button>`)}
   </div>`;
 }
 
+const moreBtnHtml = (cat, empty) => empty
+  ? `<div class="more-wrap"><span class="hint">That's every ${esc(cat.toLowerCase())} idea I found nearby. Try another category above.</span></div>`
+  : `<div class="more-wrap"><button class="btn btn-ghost" data-act="more">More ideas</button></div>`;
+
+// Initial load for a category: fetches the first 6 and renders a fresh grid.
 async function loadSuggestions(reset){
   const box = document.getElementById("results");
   if(!box) return;
   const cat = state.cat;
+  const near = state.stay ? state.stay.name : (state.fam.destination||state.previewDest);
   if(reset){
-    box.innerHTML = `<div class="thinking"><span class="dots"><i></i><i></i><i></i></span> PlanwiseER is looking around ${esc(state.fam.destination||state.previewDest)}\u2026</div>`;
+    box.innerHTML = `<div class="thinking"><span class="dots"><i></i><i></i><i></i></span> PlanwiseER is looking around ${esc(near)}\u2026</div>`;
   }
   try {
-    await ensurePool(cat);
-    const pool = state.pools[cat] || [];
-    if(!pool.length){
-      box.innerHTML = `<div class="notice">I couldn't find fresh <b>${esc(cat.toLowerCase())}</b> ideas near ${esc(state.fam.destination||state.previewDest)} right now. Try another category, or a bigger nearby city.</div>`;
+    const batch = await fetchBatch(cat, 6);
+    if(!batch.length){
+      box.innerHTML = `<div class="notice">I couldn't find fresh <b>${esc(cat.toLowerCase())}</b> ideas near ${esc(near)} right now. Try another category, or a bigger nearby city.</div>`;
       return;
     }
-    renderBatch(true);
+    const cardsHtml = batch.map(s=>suggestionCard(s)).join("");
+    box.innerHTML = `<div class="grid" id="grid">${cardsHtml}</div>${moreBtnHtml(cat, false)}`;
   } catch(e){
     box.innerHTML = `<div class="notice warn">${esc(e.message || "Something went wrong reaching the map service.")} <button class="btn-link" data-act="retry">Try again</button></div>`;
   }
 }
 
-function renderBatch(reset){
-  const box = document.getElementById("results");
+// "More ideas" click: runs a brand-new search for the next 6, appended to the grid.
+async function loadMoreBatch(btn){
   const cat = state.cat;
-  const pool = state.pools[cat] || [];
-  const per = 6;
-  let cur = state.cursor[cat] || 0;
-  const slice = pool.slice(cur, cur + per);
-  state.cursor[cat] = cur + slice.length;
-
-  const cardsHtml = slice.map((s,i)=>suggestionCard(s, cur + i)).join("");
-  const remaining = pool.length - state.cursor[cat];
-  const moreBtn = remaining > 0
-    ? `<div class="more-wrap"><button class="btn btn-ghost" data-act="more">More ideas (${remaining} left)</button></div>`
-    : `<div class="more-wrap"><span class="hint">That's every ${esc(cat.toLowerCase())} idea I found nearby. Try another category above.</span></div>`;
-
-  if(reset){
-    box.innerHTML = `<div class="grid" id="grid">${cardsHtml}</div>${moreBtn}`;
-  } else {
-    const grid = document.getElementById("grid");
-    grid.insertAdjacentHTML("beforeend", cardsHtml);
+  const box = document.getElementById("results");
+  if(btn){ btn.disabled = true; btn.textContent = "Looking\u2026"; }
+  try {
+    const batch = await fetchBatch(cat, 6);
     const mw = box.querySelector(".more-wrap");
-    if(mw) mw.outerHTML = moreBtn;
+    if(!batch.length){
+      if(mw) mw.outerHTML = moreBtnHtml(cat, true);
+      return;
+    }
+    const grid = document.getElementById("grid");
+    grid.insertAdjacentHTML("beforeend", batch.map(s=>suggestionCard(s)).join(""));
+    if(mw) mw.outerHTML = moreBtnHtml(cat, false);
+  } catch(e){
+    const mw = box.querySelector(".more-wrap");
+    if(mw) mw.innerHTML = `<span class="hint" style="color:var(--coral-d)">${esc(e.message || "Couldn't reach the map service.")} <button class="btn-link" data-act="more">Try again</button></span>`;
   }
 }
 
-async function addToTrip(idx, btn){
-  const cat = state.cat;
-  const s = (state.pools[cat] || [])[idx];
+async function addToTrip(nk, btn){
+  const s = state.byNk[nk];
   if(!s || state.preview) return;
   btn.disabled = true; btn.textContent = "Adding\u2026";
   const me = (state.user.username || "").toLowerCase();
@@ -541,7 +587,7 @@ async function addToTrip(idx, btn){
 async function startPreview(dest){
   state.preview = true; state.previewDest = dest;
   state.fam = { name: dest, destination: dest };
-  state.pools = {}; state.cursor = {}; state.added = new Set(); state.planTitles = new Set();
+  state.seen = {}; state.radius = {}; state.byNk = {}; state.added = new Set(); state.planTitles = new Set();
   try {
     state.geo = await geocode(dest);
     renderSuggest();
@@ -563,11 +609,11 @@ document.addEventListener("click", async (ev) => {
     return;
   }
   // add a suggestion
-  if(t.dataset.add !== undefined){ addToTrip(+t.dataset.add, t); return; }
+  if(t.dataset.add !== undefined){ addToTrip(t.dataset.add, t); return; }
   // recent trip
   if(t.dataset.recent !== undefined){
     const err = document.getElementById("code-err");
-    try { await connectTrip(t.dataset.recent); state.preview=false; state.geo = await geocode(state.fam.destination); renderSuggest(); }
+    try { await connectTrip(t.dataset.recent); state.preview=false; state.geo = await geocode(state.fam.destination); renderStayStep(); }
     catch(e){ if(err){ err.style.display="block"; err.textContent = e.message; } }
     return;
   }
@@ -593,14 +639,44 @@ document.addEventListener("click", async (ev) => {
       await connectTrip(code);
       state.preview = false;
       state.geo = await geocode(state.fam.destination || state.fam.name);
-      renderSuggest();
+      state.stay = null;
+      renderStayStep();
     } catch(e){
       btn.disabled=false; btn.textContent=orig;
       err.style.display="block"; err.textContent = e.message;
     }
   }
-  else if(act === "switch"){ state.fam=null; state.fid=null; state.preview=false; renderTripSelect(); }
-  else if(act === "more"){ renderBatch(false); }
+  else if(act === "save-stay"){
+    const input = document.getElementById("stay-in");
+    const err = document.getElementById("stay-err");
+    const val = (input.value||"").trim();
+    if(!val){ err.style.display="block"; err.textContent="Enter a hotel name or address, or tap skip."; return; }
+    err.style.display = "none";
+    const btn = t; btn.disabled=true; const orig=btn.textContent; btn.textContent="Looking\u2026";
+    let g;
+    try { g = await geocode(val + ", " + state.fam.destination); }
+    catch(e1){
+      try { g = await geocode(val); }
+      catch(e2){
+        btn.disabled=false; btn.textContent=orig;
+        err.style.display="block"; err.textContent = "Couldn't find that place \u2014 check the spelling, or tap skip to use " + state.fam.destination + " instead.";
+        return;
+      }
+    }
+    state.stay = { name: val, lat: g.lat, lon: g.lon };
+    state.geo = g;
+    state.seen = {}; state.radius = {}; // search fresh, centered on the new location
+    renderSuggest();
+  }
+  else if(act === "skip-stay"){
+    state.stay = null;
+    try { state.geo = await geocode(state.fam.destination || state.fam.name); } catch(e){}
+    state.seen = {}; state.radius = {};
+    renderSuggest();
+  }
+  else if(act === "change-stay"){ renderStayStep(); }
+  else if(act === "switch"){ state.fam=null; state.fid=null; state.stay=null; state.preview=false; renderTripSelect(); }
+  else if(act === "more"){ loadMoreBatch(t); }
   else if(act === "retry"){ loadSuggestions(true); }
 });
 
@@ -610,6 +686,7 @@ document.addEventListener("keydown", (ev) => {
   const id = ev.target && ev.target.id;
   if(id === "lg-user" || id === "lg-pass"){ ev.preventDefault(); document.querySelector('[data-act="login"]').click(); }
   if(id === "code-in"){ ev.preventDefault(); document.querySelector('[data-act="load-trip"]').click(); }
+  if(id === "stay-in"){ ev.preventDefault(); document.querySelector('[data-act="save-stay"]').click(); }
 });
 
 /* ---------------- boot ---------------- */
