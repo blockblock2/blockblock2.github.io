@@ -158,6 +158,7 @@ const state = {
   cat: "Sights",
   seen: {},                       // cat -> Set of normalized titles already shown/added (across batches)
   radius: {},                     // cat -> current search radius in meters (widens if a batch comes up short)
+  buffer: {},                     // cat -> not-yet-served fresh results from the last network fetch
   byNk: {},                       // normalized title -> suggestion object (lookup for "Add to trip")
   added: new Set(),               // normalized titles added this session
   preview: false, previewDest: ""
@@ -188,6 +189,13 @@ async function fbGet(path){
 async function fbPush(path, body){
   const r = await fetch(state.db + "/" + path + ".json", {
     method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error("Firebase write failed (" + r.status + ")");
+  return r.json();
+}
+async function fbPut(path, body){
+  const r = await fetch(state.db + "/" + path + ".json", {
+    method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
   });
   if(!r.ok) throw new Error("Firebase write failed (" + r.status + ")");
   return r.json();
@@ -225,7 +233,7 @@ async function doLogin(usernameRaw, pass){
 function logout(){
   state.user = null; LS.del("pwe_session");
   state.fam = null; state.fid = null; state.preview = false;
-  state.seen = {}; state.radius = {}; state.byNk = {}; state.added = new Set();
+  state.seen = {}; state.radius = {}; state.buffer = {}; state.byNk = {}; state.added = new Set();
   renderLogin();
 }
 
@@ -269,12 +277,31 @@ async function connectTrip(codeRaw){
   state.fam = { name: tripName, destination, famName: fam && fam.name };
   state.plans = plans;
   state.planTitles = new Set(Object.values(plans).map(p => norm(p.title)));
-  state.seen = {}; state.radius = {}; state.byNk = {}; state.added = new Set();
+  state.seen = {}; state.radius = {}; state.buffer = {}; state.byNk = {}; state.added = new Set();
 
   const recent = (LS.get("pwe_recent") || []).filter(x => x.code !== state.code);
   recent.unshift({ code: state.code, name: state.fam.name, dest: destination });
   LS.set("pwe_recent", recent.slice(0,6));
   return state.fam;
+}
+
+// After connecting to a trip: check PlanWise's database for a stay location this
+// user already saved for this trip. If found, skip straight to suggestions
+// (still changeable via "Change stay"); otherwise ask.
+async function resolveStayAndGo(){
+  const me = (state.user.username || "").toLowerCase();
+  const saved = await fbGetSafe("stays/" + state.tripId + "/" + me);
+  if(saved && saved.skipped){
+    state.stay = null;
+    renderSuggest();
+  } else if(saved && saved.lat != null && saved.lon != null){
+    state.stay = { name: saved.name || "", lat: saved.lat, lon: saved.lon };
+    state.geo = { lat: saved.lat, lon: saved.lon, name: saved.name || "" };
+    renderSuggest();
+  } else {
+    state.stay = null;
+    renderStayStep();
+  }
 }
 
 /* ---------------- geocode + place search (keyless) ---------------- */
@@ -352,43 +379,49 @@ function toSuggestion(el, cat, geo){
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
-// Runs one fresh location search and returns up to `need` new (not-yet-seen) results.
-// Widens the search radius and retries a few times if the first pass comes up short,
-// since a fresh 6-result query near an already-picked-over area may turn up few new spots.
-async function fetchBatch(cat, need){
+// One network call: searches around the current radius and returns every valid,
+// not-yet-seen result (deduped, shuffled). Widens the radius for next time if this
+// pass came up thin, so a sparse area doesn't keep re-querying the same small circle.
+async function fetchRaw(cat){
   const q = CAT_QUERY[cat];
-  if(!state.seen[cat]) state.seen[cat] = new Set();
-  if(!state.radius[cat]) state.radius[cat] = q.r;
-
-  const collected = [];
-  let attempts = 0;
-  while(collected.length < need && attempts < 4){
-    attempts++;
-    const r = state.radius[cat];
-    const around = "around:" + r + "," + state.geo.lat + "," + state.geo.lon;
-    const ql = "[out:json][timeout:25];" + q.ql(around) + "out center " + (cat==="Day trips"?90:150) + ";";
-    const els = await overpass(ql);
-    const fresh = [];
-    const dupCheck = new Set();
-    for(const el of els){
-      const s = toSuggestion(el, cat, state.geo);
-      if(!s) continue;
-      if(dupCheck.has(s.nk)) continue;
-      if(state.seen[cat].has(s.nk)) continue;       // already shown in an earlier batch
-      if(state.planTitles.has(s.nk)) continue;      // already on the board
-      if(state.added.has(s.nk)) continue;            // added this session
-      dupCheck.add(s.nk); fresh.push(s);
-    }
-    shuffle(fresh);
-    for(const s of fresh){
-      if(collected.length >= need) break;
-      collected.push(s);
-      state.seen[cat].add(s.nk);
-    }
-    if(collected.length < need) state.radius[cat] = Math.round(r * 1.6); // cast a wider net next pass
+  const r = state.radius[cat];
+  const around = "around:" + r + "," + state.geo.lat + "," + state.geo.lon;
+  const ql = "[out:json][timeout:25];" + q.ql(around) + "out center " + (cat==="Day trips"?90:150) + ";";
+  const els = await overpass(ql);
+  const fresh = [];
+  const dupCheck = new Set();
+  for(const el of els){
+    const s = toSuggestion(el, cat, state.geo);
+    if(!s) continue;
+    if(dupCheck.has(s.nk)) continue;
+    if(state.seen[cat].has(s.nk)) continue;       // already shown in an earlier batch
+    if(state.planTitles.has(s.nk)) continue;      // already on the board
+    if(state.added.has(s.nk)) continue;            // added this session
+    dupCheck.add(s.nk); fresh.push(s);
   }
-  collected.forEach(s => { state.byNk[s.nk] = s; });
-  return collected;
+  shuffle(fresh);
+  if(fresh.length < 12) state.radius[cat] = Math.round(r * 1.6); // cast a wider net if this pass was thin
+  return fresh;
+}
+
+// Serves `need` results, pulling from the local buffer (instant) and only hitting
+// the network when the buffer actually runs out \u2014 keeps "more ideas" fast while
+// still surfacing genuinely fresh spots as they're needed.
+async function fetchBatch(cat, need){
+  if(!state.seen[cat]) state.seen[cat] = new Set();
+  if(!state.radius[cat]) state.radius[cat] = CAT_QUERY[cat].r;
+  if(!state.buffer[cat]) state.buffer[cat] = [];
+
+  let guard = 0;
+  while(state.buffer[cat].length < need && guard < 4){
+    guard++;
+    const fresh = await fetchRaw(cat);
+    if(!fresh.length) break; // nothing more to find even after widening \u2014 stop trying
+    state.buffer[cat].push(...fresh);
+  }
+  const batch = state.buffer[cat].splice(0, need);
+  batch.forEach(s => { state.seen[cat].add(s.nk); state.byNk[s.nk] = s; });
+  return batch;
 }
 
 /* ---------------- renders ---------------- */
@@ -442,7 +475,7 @@ function renderTripSelect(){
   `;
 }
 
-function renderStayStep(){
+function renderStayStep(prefill){
   renderStatus();
   const f = state.fam;
   app.innerHTML = `
@@ -451,7 +484,7 @@ function renderStayStep(){
     <p class="lede">Give me the hotel name or address in ${esc(f.destination)} and I'll find ideas closer to where you'll actually be \u2014 not just the middle of the city.</p>
     <div class="card pad" style="max-width:520px">
       <label class="fld"><span>Hotel name or address</span>
-        <input id="stay-in" placeholder="e.g. Hotel Le Marais, or 12 Rue de Rivoli" autocomplete="off" spellcheck="false"></label>
+        <input id="stay-in" value="${esc(prefill||"")}" placeholder="e.g. Hotel Le Marais, or 12 Rue de Rivoli" autocomplete="off" spellcheck="false"></label>
       <div class="row">
         <button class="btn btn-primary" data-act="save-stay">Continue</button>
         <button class="btn btn-ghost" data-act="skip-stay">Skip \u2014 just use ${esc(f.destination)}</button>
@@ -587,7 +620,7 @@ async function addToTrip(nk, btn){
 async function startPreview(dest){
   state.preview = true; state.previewDest = dest;
   state.fam = { name: dest, destination: dest };
-  state.seen = {}; state.radius = {}; state.byNk = {}; state.added = new Set(); state.planTitles = new Set();
+  state.seen = {}; state.radius = {}; state.buffer = {}; state.byNk = {}; state.added = new Set(); state.planTitles = new Set();
   try {
     state.geo = await geocode(dest);
     renderSuggest();
@@ -613,7 +646,7 @@ document.addEventListener("click", async (ev) => {
   // recent trip
   if(t.dataset.recent !== undefined){
     const err = document.getElementById("code-err");
-    try { await connectTrip(t.dataset.recent); state.preview=false; state.geo = await geocode(state.fam.destination); renderStayStep(); }
+    try { await connectTrip(t.dataset.recent); state.preview=false; state.geo = await geocode(state.fam.destination); await resolveStayAndGo(); }
     catch(e){ if(err){ err.style.display="block"; err.textContent = e.message; } }
     return;
   }
@@ -640,7 +673,7 @@ document.addEventListener("click", async (ev) => {
       state.preview = false;
       state.geo = await geocode(state.fam.destination || state.fam.name);
       state.stay = null;
-      renderStayStep();
+      await resolveStayAndGo();
     } catch(e){
       btn.disabled=false; btn.textContent=orig;
       err.style.display="block"; err.textContent = e.message;
@@ -665,16 +698,20 @@ document.addEventListener("click", async (ev) => {
     }
     state.stay = { name: val, lat: g.lat, lon: g.lon };
     state.geo = g;
-    state.seen = {}; state.radius = {}; // search fresh, centered on the new location
+    state.seen = {}; state.radius = {}; state.buffer = {}; // search fresh, centered on the new location
+    const me = (state.user.username || "").toLowerCase();
+    try { await fbPut("stays/" + state.tripId + "/" + me, state.stay); } catch(e){} // best-effort; don't block on save
     renderSuggest();
   }
   else if(act === "skip-stay"){
     state.stay = null;
     try { state.geo = await geocode(state.fam.destination || state.fam.name); } catch(e){}
-    state.seen = {}; state.radius = {};
+    state.seen = {}; state.radius = {}; state.buffer = {};
+    const me = (state.user.username || "").toLowerCase();
+    try { await fbPut("stays/" + state.tripId + "/" + me, { skipped: true }); } catch(e){}
     renderSuggest();
   }
-  else if(act === "change-stay"){ renderStayStep(); }
+  else if(act === "change-stay"){ renderStayStep(state.stay ? state.stay.name : ""); }
   else if(act === "switch"){ state.fam=null; state.fid=null; state.stay=null; state.preview=false; renderTripSelect(); }
   else if(act === "more"){ loadMoreBatch(t); }
   else if(act === "retry"){ loadSuggestions(true); }
