@@ -227,68 +227,44 @@ function logout(){
   renderLogin();
 }
 
-/* ---------------- resolve a PlanWise code -> trip + family board ---------------- */
+/* ---------------- resolve a PlanWise trip code -> trip + shared plan board ---------------- */
 async function fbGetSafe(path){ try { return await fbGet(path); } catch { return null; } }
 const up = s => String(s==null?"":s).toUpperCase();
 
 async function connectTrip(codeRaw){
   const raw = codeRaw.trim();
   const variants = raw === up(raw) ? [raw] : [raw, up(raw)];
-  let tripId = null, famId = null;
+  let tripId = null;
 
   // 1. trip invite code  (PlanWise: tripcodes/{CODE} -> tripId)
   for(const k of variants){ const v = await fbGetSafe("tripcodes/" + encodeURIComponent(k)); if(typeof v === "string" && v){ tripId = v; break; } }
-  // 2. family invite code  (PlanWise: famcodes/{CODE} -> famId)
-  if(!tripId){ for(const k of variants){ const v = await fbGetSafe("famcodes/" + encodeURIComponent(k)); if(typeof v === "string" && v){ famId = v; break; } } }
-  // 3. legacy codes/{CODE} -> famId
-  if(!tripId && !famId){ for(const k of variants){ const v = await fbGetSafe("codes/" + encodeURIComponent(k)); if(typeof v === "string" && v){ famId = v; break; } } }
-  // 4. scan trips / families by their own .code
-  if(!tripId && !famId){
+  // 2. fallback: scan trips by their own .code field (in case the index is stale)
+  if(!tripId){
     const trips = await fbGetSafe("trips");
     if(trips) for(const [id,t] of Object.entries(trips)){ if(t && up(t.code) === up(raw)){ tripId = id; break; } }
   }
-  if(!tripId && !famId){
-    const fams = await fbGetSafe("families");
-    if(fams) for(const [id,f] of Object.entries(fams)){ if(f && up(f.code) === up(raw)){ famId = id; break; } }
-  }
-  if(!tripId && !famId) throw new Error("That code didn't match a trip or family in PlanWise. Double-check it \u2014 trip codes look like TRIP-XXXXXX.");
+  if(!tripId) throw new Error("That code didn't match a trip in PlanWise. Double-check it \u2014 trip codes look like TRIP-XXXXXX.");
 
-  const me = (state.user.username || "").toLowerCase();
-  let trip = null, fam = null, destination = "", tripName = "";
-
-  // if we have a trip, load it and pick the family board to add to
-  if(tripId){
-    trip = await fbGet("trips/" + tripId);
-    if(!trip) throw new Error("Found the code, but that trip no longer exists.");
-    tripName = trip.name || "Trip";
-    destination = trip.destination || "";
-    const famIds = Object.keys(trip.families || {});
-    // prefer the family the logged-in user belongs to
-    for(const id of famIds){ const f = await fbGetSafe("families/" + id); if(f && f.members && f.members[me]){ famId = id; fam = f; break; } }
-    // otherwise the first family in the trip
-    if(!fam && famIds.length){ famId = famIds[0]; fam = await fbGetSafe("families/" + famId); }
-  }
-  // if we only had a family code, load the family and its parent trip for the destination
-  if(famId && !fam){
-    fam = await fbGet("families/" + famId);
-    if(!fam) throw new Error("Found the code, but that family no longer exists.");
-  }
-  if(fam && fam.tripId && !destination){
-    const t = await fbGetSafe("trips/" + fam.tripId);
-    if(t){ trip = t; tripId = fam.tripId; tripName = t.name || tripName; destination = t.destination || destination; }
-  }
-  if(!destination) destination = (fam && fam.destination) || "";
-
-  if(!famId) throw new Error("That trip has no family board yet. Add a family in PlanWise first.");
+  const trip = await fbGet("trips/" + tripId);
+  if(!trip) throw new Error("Found the code, but that trip no longer exists.");
+  const tripName = trip.name || "Trip";
+  const destination = trip.destination || "";
   if(!destination) throw new Error("This trip doesn't have a destination set in PlanWise yet \u2014 add one there, then come back.");
 
-  // plans live under the family id in PlanWise
-  const plans = (await fbGetSafe("plans/" + famId)) || {};
+  // families are just for display (whose board this is) \u2014 prefer the one the logged-in user belongs to
+  const me = (state.user.username || "").toLowerCase();
+  const famIds = Object.keys(trip.families || {});
+  let famId = null, fam = null;
+  for(const id of famIds){ const f = await fbGetSafe("families/" + id); if(f && f.members && f.members[me]){ famId = id; fam = f; break; } }
+  if(!fam && famIds.length){ famId = famIds[0]; fam = await fbGetSafe("families/" + famId); }
+
+  // plans live under the trip id in PlanWise (one shared board per trip, across all families)
+  const plans = (await fbGetSafe("plans/" + tripId)) || {};
 
   state.tripId = tripId;
   state.fid = famId;
   state.code = up(raw);
-  state.fam = { name: tripName || (fam && fam.name) || "Trip", destination, famName: fam && fam.name };
+  state.fam = { name: tripName, destination, famName: fam && fam.name };
   state.plans = plans;
   state.planTitles = new Set(Object.values(plans).map(p => norm(p.title)));
 
@@ -433,7 +409,7 @@ function renderTripSelect(){
     <h2 class="h">Which trip are we planning?</h2>
     <p class="lede">Enter the invite code for the trip (the same code families use to join it in PlanWise). PlanwiseER will look up where you're going.</p>
     <div class="card pad" style="max-width:520px">
-      <label class="fld"><span>Trip or family invite code</span>
+      <label class="fld"><span>Trip invite code</span>
         <input id="code-in" placeholder="e.g. TRIP-XXXXXX" autocomplete="off" spellcheck="false" style="text-transform:uppercase; letter-spacing:.12em; font-weight:700"></label>
       <button class="btn btn-primary" data-act="load-trip">Find trip</button>
       <p id="code-err" class="notice warn" style="display:none;margin-top:16px"></p>
@@ -459,7 +435,7 @@ function renderSuggest(){
     </div>
     <div class="board-note">${state.preview
       ? "\u2728 Preview mode \u2014 connect a trip to add ideas to a real board."
-      : (boardCount ? `\u2728 ${boardCount} plan${boardCount===1?"":"s"} already on ${f.famName?esc(f.famName)+"\u2019s":"this"} board \u2014 I'll skip repeats.` : `\u2728 ${f.famName?esc(f.famName)+"\u2019s":"This"} board is empty \u2014 let's fill it.`)}</div>
+      : (boardCount ? `\u2728 ${boardCount} plan${boardCount===1?"":"s"} already on this trip's board \u2014 I'll skip repeats.` : `\u2728 This trip's board is empty \u2014 let's fill it.`)}</div>
 
     <p class="eyebrow">What kind of ideas?</p>
     <div class="chips" id="chips">
@@ -548,7 +524,7 @@ async function addToTrip(idx, btn){
     votes: { [me]: true }
   };
   try {
-    await fbPush("plans/" + state.fid, plan);
+    await fbPush("plans/" + state.tripId, plan);
     state.added.add(s.nk);
     state.planTitles.add(s.nk);
     const card = btn.closest(".sug");
