@@ -428,7 +428,43 @@ function toSuggestion(el, cat, geo){
     const d = haversine(geo.lat, geo.lon, lat, lon);
     if(d > 1.2) note += (note?" \u00b7 ":"") + (d<10 ? d.toFixed(1) : Math.round(d)) + " km away";
   }
-  return { title:name, cat, note, nk };
+  return { title:name, cat, note, nk, score: popularity(t), wd: (t.wikidata && /^Q\d+$/.test(t.wikidata)) ? t.wikidata : null };
+}
+
+// A keyless popularity proxy from OpenStreetMap tags. Real fame (via Wikidata) is
+// layered on top in fetchRaw. Higher = more likely to be a well-known, popular place.
+function popularity(t){
+  let s = 0;
+  if(t.wikipedia) s += 40;
+  if(t.wikidata) s += 40;
+  if(t.wikimedia_commons) s += 10;
+  if(t.heritage) s += 30;
+  if(t.website || t["contact:website"]) s += 10;
+  if(t.image) s += 6;
+  if(t.stars){ s += (parseInt(t.stars) || 0) * 8; }
+  let langs = 0; for(const k in t){ if(k.indexOf("name:") === 0) langs++; }
+  s += Math.min(langs, 10) * 5;                       // named in many languages => internationally known
+  const notable = /attraction|museum|gallery|viewpoint|monument|castle|memorial|artwork|theme_park|zoo|aquarium|ruins|archaeological/;
+  if((t.tourism && notable.test(t.tourism)) || (t.historic && notable.test(t.historic))) s += 15;
+  s += Math.min(Object.keys(t).length, 20);           // richly documented places tend to matter more
+  return s;
+}
+
+// How famous is a Wikidata entity? Count its Wikipedia language editions (sitelinks).
+// Wikidata's API allows browser calls (origin=*), needs no key, and is cached per session.
+const wdCache = {};
+async function wikidataFame(ids){
+  const need = ids.filter(id => wdCache[id] === undefined);
+  for(let i = 0; i < need.length; i += 45){
+    const chunk = need.slice(i, i + 45);
+    try {
+      const u = "https://www.wikidata.org/w/api.php?action=wbgetentities&props=sitelinks&format=json&origin=*&ids=" + chunk.join("|");
+      const r = await fetch(u);
+      const j = await r.json();
+      const ents = (j && j.entities) || {};
+      chunk.forEach(id => { const e = ents[id]; wdCache[id] = (e && e.sitelinks) ? Object.keys(e.sitelinks).length : 0; });
+    } catch(e){ chunk.forEach(id => { if(wdCache[id] === undefined) wdCache[id] = 0; }); }
+  }
 }
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
@@ -453,7 +489,13 @@ async function fetchRaw(cat){
     if(state.added.has(s.nk)) continue;            // added this session
     dupCheck.add(s.nk); fresh.push(s);
   }
-  shuffle(fresh);
+  // Rank by popularity: pull real fame for notable places, then sort most-popular first.
+  const wdIds = [...new Set(fresh.filter(s => s.wd).map(s => s.wd))];
+  if(wdIds.length){
+    try { await wikidataFame(wdIds); } catch(e){}
+    fresh.forEach(s => { if(s.wd && wdCache[s.wd]) s.score += Math.min(wdCache[s.wd], 200); });
+  }
+  fresh.sort((a,b) => b.score - a.score);
   if(fresh.length < 12) state.radius[cat] = Math.round(r * 1.6); // cast a wider net if this pass was thin
   return fresh;
 }
@@ -473,6 +515,7 @@ async function fetchBatch(cat, need){
     if(!fresh.length) break; // nothing more to find even after widening \u2014 stop trying
     state.buffer[cat].push(...fresh);
   }
+  state.buffer[cat].sort((a,b) => b.score - a.score); // most popular first; every "More" digs a little deeper
   const batch = state.buffer[cat].splice(0, need);
   batch.forEach(s => { state.seen[cat].add(s.nk); state.byNk[s.nk] = s; });
   return batch;
