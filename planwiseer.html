@@ -205,7 +205,8 @@ const state = {
   cat: "Sights",
   day: "TBD",                     // which trip day we're adding to (also filters by what's open)
   days: [],                       // the trip's real dates, from PlanWise
-  ratings: {},                    // cat -> { normalized title -> {rating, reviews} } from the proxy
+  ratings: {},                    // cat -> { normalized title -> full Google record }
+  seeded: {},                     // cat -> have Google's rated places been merged in yet?
   seen: {},                       // cat -> Set of normalized titles already shown/added (across batches)
   radius: {},                     // cat -> current search radius in meters (widens if a batch comes up short)
   buffer: {},                     // cat -> not-yet-served fresh results from the last network fetch
@@ -287,7 +288,7 @@ function logout(){
   LS.del(SESSION_KEY);   // logs you out of PlanWise too
   LS.del("pwe_session");
   state.fam = null; state.fid = null; state.preview = false;
-  state.seen = {}; state.radius = {}; state.buffer = {}; state.byNk = {}; state.added = new Set();
+  state.seen = {}; state.radius = {}; state.buffer = {}; state.byNk = {}; state.seeded = {}; state.added = new Set();
   renderLogin();
 }
 
@@ -457,7 +458,7 @@ async function loadRatings(cat){
     const r = await fetch(u);
     const j = await r.json();
     const map = {};
-    (j.results||[]).forEach(x => { if(x && x.title) map[norm(x.title)] = { rating:x.rating, reviews:x.reviews||0 }; });
+    (j.results||[]).forEach(x => { if(x && x.title) map[norm(x.title)] = x; });
     state.ratings[cat] = map;
   }catch(e){}
 }
@@ -657,6 +658,27 @@ async function fetchBatch(cat, need){
   if(!state.buffer[cat]) state.buffer[cat] = [];
 
   await loadRatings(cat);
+
+  // Google's list (top places city-wide) and OpenStreetMap's list (whatever sits near
+  // the stay) barely overlap, so matching names finds almost nothing. Put Google's rated
+  // places straight into the pool instead, and let OSM's deeper cuts queue behind them.
+  if(!state.seeded[cat]){
+    state.seeded[cat] = true;
+    const map = state.ratings[cat] || {};
+    for(const nk in map){
+      const r = map[nk];
+      if(!r || typeof r.rating !== "number") continue;
+      if(state.planTitles.has(nk) || state.added.has(nk) || state.seen[cat].has(nk)) continue;
+      let note = (r.type || "").toLowerCase();
+      if(r.lat != null && r.lng != null && state.geo){
+        const d = haversine(state.geo.lat, state.geo.lon, r.lat, r.lng);
+        if(d > 1.2) note += (note ? " \u00b7 " : "") + (d < 10 ? d.toFixed(1) : Math.round(d)) + " km away";
+      }
+      state.buffer[cat].push({ title:r.title, cat, note, nk, score:0, oh:"",
+        rated:{ rating:r.rating, reviews:r.reviews||0 }, rscore:ratingScore(r) });
+    }
+  }
+
   const dow = isISO(state.day) ? dowOf(state.day) : -1;
   // If they picked a day, drop anything OSM says is shut that day. Unknown hours stay in.
   const openThatDay = s => dow < 0 || opensOn(s.oh, dow) !== false;
@@ -668,13 +690,21 @@ async function fetchBatch(cat, need){
     if(!fresh.length) break; // nothing more to find even after widening \u2014 stop trying
     state.buffer[cat].push(...fresh);
   }
+  // the same place can arrive from both sources \u2014 keep one, preferring the rated copy
+  const uniq = {};
+  state.buffer[cat].forEach(s => {
+    const ex = uniq[s.nk];
+    if(!ex || (s.rated && !ex.rated)) uniq[s.nk] = s;
+  });
+  state.buffer[cat] = Object.values(uniq);
+
   // attach any real Google rating we have for this place
   const rmap = state.ratings[cat] || {};
   state.buffer[cat].forEach(s => {
     if(s.rated === undefined){
       const r = rmap[s.nk];
-      s.rated = r || null;
-      s.rscore = r ? ratingScore(r) : null;
+      s.rated = (r && typeof r.rating === "number") ? { rating:r.rating, reviews:r.reviews||0 } : null;
+      s.rscore = s.rated ? ratingScore(r) : null;
     }
   });
   // rated places rank by rating x review count; anything Google doesn't know falls back to fame
@@ -1090,7 +1120,7 @@ document.addEventListener("click", async (ev) => {
 document.addEventListener("change", (ev) => {
   if(ev.target && ev.target.id === "day-sel"){
     state.day = ev.target.value;
-    state.seen = {}; state.radius = {}; state.buffer = {}; state.byNk = {};
+    state.seen = {}; state.radius = {}; state.buffer = {}; state.byNk = {}; state.seeded = {};
     renderSuggest();
   }
 });
