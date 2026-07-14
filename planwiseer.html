@@ -54,6 +54,19 @@ main{max-width:960px; margin:0 auto; padding:30px 20px 70px}
 .pwe-trip-meta{font-size:12.5px; color:var(--faint); margin-top:2px}
 .code-fallback summary{cursor:pointer; font-weight:600; font-size:13.5px; color:var(--coral); width:fit-content}
 .code-fallback summary:hover{text-decoration:underline}
+.xrow{display:flex; gap:12px; flex-wrap:wrap}
+.xf{flex:1; min-width:170px}
+.xf select{width:100%; font-family:inherit; font-size:15px; color:var(--ink); padding:11px 13px; border:1px solid var(--line); border-radius:11px; background:var(--paper); cursor:pointer}
+.xf select:focus{outline:2px solid var(--coral); outline-offset:1px}
+.demo{border-color:var(--coral)}
+.dayrow{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin:0 0 16px}
+.daypick{display:flex; flex-direction:column; gap:5px}
+.daypick span{font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--coral); font-weight:700}
+.daypick select{font-family:inherit; font-size:14.5px; font-weight:600; color:var(--ink); padding:9px 12px; border:1px solid var(--line); border-radius:10px; background:var(--paper); cursor:pointer}
+.daypick select:focus{outline:2px solid var(--coral); outline-offset:1px}
+.rating{display:flex; align-items:center; gap:6px; margin:0 0 6px; font-size:13.5px; font-weight:600; color:var(--ink)}
+.rstars{color:var(--gold); letter-spacing:1px}
+.rcount{color:var(--faint); font-weight:400}
 
 .eyebrow{font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--coral); font-weight:700; margin:0 0 8px}
 h2.h{font-family:var(--serif); font-weight:600; font-size:30px; line-height:1.12; margin:0 0 10px; letter-spacing:-.015em}
@@ -158,6 +171,24 @@ const CHIP_ORDER = ["Sights","Eat & drink","Neighborhoods","Day trips","Nightlif
 
 // PlanWise's own Firebase Realtime Database (project: planwise-73ada)
 const DEFAULT_DB = "https://planwise-73ada-default-rtdb.firebaseio.com";
+// Paste your Cloudflare Worker URL here to turn on real Google star ratings.
+// Leave "" and PlanwiseER just ranks by Wikidata fame, exactly as it does now.
+const RATINGS_PROXY = "https://planer.acute-percent5v.workers.dev";
+const EXPLORE_TYPES = ["restaurants","tourist attractions","hotels","bars and nightlife",
+  "neighborhoods","day trips","museums","cafes"];
+const exploreUrl = (place, type) => RATINGS_PROXY.replace(/\/+$/,"") +
+  "?dest=" + encodeURIComponent(place) + "&q=" + encodeURIComponent(type);
+const demoUsed = () => !!LS.get("pwe_demo_used");
+function exploreForm(idp, ids, place, type){
+  return `<div class="xrow">
+    <label class="fld xf"><span>Place</span><input id="${idp}" value="${esc(place||"")}" placeholder="Lima, Peru" autocomplete="off"></label>
+    <label class="fld xf"><span>Looking for</span><select id="${ids}">${
+      EXPLORE_TYPES.map(o=>`<option${o===type?" selected":""}>${esc(o)}</option>`).join("")}</select></label>
+  </div>`;
+}
+const CAT_TERM = { "Eat & drink":"restaurants", "Sights":"tourist attractions",
+  "Neighborhoods":"neighborhoods", "Day trips":"day trips",
+  "Nightlife":"bars and nightlife", "Where to stay":"hotels" };
 // PlanWise and PlanwiseER share this origin (blockblock2.github.io), so they share
 // localStorage. Using PlanWise's own session key means logging into either logs you
 // into both, and logging out of either logs you out of both.
@@ -172,6 +203,9 @@ const state = {
   planTitles: new Set(),          // normalized existing titles (for dedupe)
   geo: null,                      // {lat, lon, name}
   cat: "Sights",
+  day: "TBD",                     // which trip day we're adding to (also filters by what's open)
+  days: [],                       // the trip's real dates, from PlanWise
+  ratings: {},                    // cat -> { normalized title -> {rating, reviews} } from the proxy
   seen: {},                       // cat -> Set of normalized titles already shown/added (across batches)
   radius: {},                     // cat -> current search radius in meters (widens if a batch comes up short)
   buffer: {},                     // cat -> not-yet-served fresh results from the last network fetch
@@ -282,7 +316,10 @@ async function connectTripById(tripId){
   state.tripId = tripId;
   state.fid = famId;
   state.code = up(trip.code || "");
-  state.fam = { name: tripName, destination, famName: fam && fam.name };
+  state.fam = { name: tripName, destination, famName: fam && fam.name,
+                startDate: trip.startDate || "", endDate: trip.endDate || "" };
+  state.days = dateList(trip.startDate, trip.endDate);
+  state.day = "TBD";
   state.plans = plans;
   state.planTitles = new Set(Object.values(plans).map(p => norm(p.title)));
   state.seen = {}; state.radius = {}; state.buffer = {}; state.byNk = {}; state.added = new Set();
@@ -358,6 +395,105 @@ async function resolveStayAndGo(){
   renderStayStep();
 }
 
+/* ---------------- trip dates ---------------- */
+const isISO = v => /^\d{4}-\d{2}-\d{2}$/.test(v);
+function dateList(start,end){
+  const out=[]; if(!start) return out;
+  const s=new Date(start+"T12:00:00"), e=new Date((end||start)+"T12:00:00");
+  if(isNaN(s)||isNaN(e)||e<s) return out;
+  for(let d=new Date(s); d<=e && out.length<90; d.setDate(d.getDate()+1)) out.push(d.toISOString().slice(0,10));
+  return out;
+}
+const fmtDate = iso => { const d=new Date(iso+"T12:00:00");
+  return isNaN(d) ? iso : d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}); };
+const dowOf = iso => { const d=new Date(iso+"T12:00:00"); return isNaN(d) ? -1 : d.getDay(); };
+
+/* ---------------- "is it open that day?" ----------------
+   OpenStreetMap stores hours in an opening_hours mini-language ("Mo-Fr 09:00-17:00; Su off").
+   Full parsing is a rabbit hole, so this reads the day rules only, and deliberately
+   returns null ("can't tell") rather than guessing — unknown places are never hidden. */
+const DOW = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+function opensOn(oh, dow){
+  if(!oh || dow < 0) return null;
+  const s = String(oh).trim();
+  if(/24\/7/.test(s)) return true;
+  const day = DOW[dow];
+  let verdict = null;
+  s.split(";").forEach(rule => {
+    rule = rule.trim(); if(!rule) return;
+    if(/^(PH|SH|easter)/i.test(rule)) return;         // holiday rules — not our business
+    const off = /\boff\b|\bclosed\b/i.test(rule);
+    const m = rule.match(/^((?:Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*-\s*(?:Mo|Tu|We|Th|Fr|Sa|Su))?(?:\s*,\s*(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*-\s*(?:Mo|Tu|We|Th|Fr|Sa|Su))?)*)/);
+    if(!m){ if(verdict === null) verdict = !off; return; }  // no day spec => every day
+    let hit = false;
+    m[1].split(",").forEach(tok => {
+      tok = tok.trim();
+      const r = tok.match(/^(Mo|Tu|We|Th|Fr|Sa|Su)\s*-\s*(Mo|Tu|We|Th|Fr|Sa|Su)$/);
+      if(r){
+        const a = DOW.indexOf(r[1]), b = DOW.indexOf(r[2]);
+        for(let i=0;i<7;i++){ const d=(a+i)%7; if(DOW[d]===day) hit=true; if(d===b) break; }
+      } else if(tok === day) hit = true;
+    });
+    if(hit) verdict = !off;   // later rules win, same as the spec
+  });
+  return verdict;
+}
+
+/* ---------------- real ratings (via the Worker proxy) ---------------- */
+async function loadRatings(cat){
+  if(!RATINGS_PROXY || state.ratings[cat]) return;
+  state.ratings[cat] = {}; // don't retry on failure
+  const dest = state.fam.destination || state.previewDest;
+  if(!dest) return;
+  try{
+    const u = RATINGS_PROXY.replace(/\/+$/,"") + "?dest=" + encodeURIComponent(dest) +
+              "&q=" + encodeURIComponent(CAT_TERM[cat] || cat);
+    const r = await fetch(u);
+    const j = await r.json();
+    const map = {};
+    (j.results||[]).forEach(x => { if(x && x.title) map[norm(x.title)] = { rating:x.rating, reviews:x.reviews||0 }; });
+    state.ratings[cat] = map;
+  }catch(e){}
+}
+// Bayesian average, so 5.0-from-3-reviews can't outrank 4.5-from-8000, then reward real volume.
+function ratingScore(r){
+  const v = r.reviews||0, R = r.rating||0, m = 50, C = 4.0;
+  const w = (v/(v+m))*R + (m/(v+m))*C;
+  return w * Math.log10(v+10) * 40;
+}
+const stars = n => "\u2605".repeat(Math.round(n)) + "\u2606".repeat(5-Math.round(n));
+
+/* ---------------- calendar (always the current vote winners) ---------------- */
+const icsEsc = s => String(s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+function plusDay(iso){ const d=new Date(iso+"T12:00:00"); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); }
+function downloadItinerary(){
+  const plans = Object.values(state.plans||{});
+  const wins = [];
+  state.days.forEach(day => {
+    const onDay = plans.filter(p => (p.day||"TBD") === day && Object.keys(p.votes||{}).length);
+    if(!onDay.length) return;
+    onDay.sort((a,b)=>Object.keys(b.votes||{}).length - Object.keys(a.votes||{}).length || (a.createdAt||0)-(b.createdAt||0));
+    wins.push({ day, plan:onDay[0], votes:Object.keys(onDay[0].votes||{}).length });
+  });
+  if(!wins.length){ alert("Nothing to add yet \u2014 plans need a date and at least one vote. Vote in PlanWise, then try again."); return; }
+  const L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//PlanwiseER//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+  wins.forEach((w,i)=>{
+    L.push("BEGIN:VEVENT","UID:pwe-"+state.tripId+"-"+w.day+"-"+i+"@planwise",
+      "DTSTAMP:"+new Date().toISOString().replace(/[-:]/g,"").split(".")[0]+"Z",
+      "DTSTART;VALUE=DATE:"+w.day.replace(/-/g,""),
+      "DTEND;VALUE=DATE:"+plusDay(w.day).replace(/-/g,""),
+      "SUMMARY:"+icsEsc(w.plan.title),
+      "DESCRIPTION:"+icsEsc([w.plan.note, w.votes+" vote(s) \u2014 winning this day", state.fam.name].filter(Boolean).join("\n")),
+      "LOCATION:"+icsEsc(state.fam.destination||""),"END:VEVENT");
+  });
+  L.push("END:VCALENDAR");
+  const blob = new Blob([L.join("\r\n")], {type:"text/calendar;charset=utf-8"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = (state.fam.name||"trip").replace(/[^a-z0-9]+/gi,"-").toLowerCase()+".ics";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+
 /* ---------------- geocode + place search (keyless) ---------------- */
 function haversine(la1,lo1,la2,lo2){
   const R=6371, d=x=>x*Math.PI/180;
@@ -428,7 +564,8 @@ function toSuggestion(el, cat, geo){
     const d = haversine(geo.lat, geo.lon, lat, lon);
     if(d > 1.2) note += (note?" \u00b7 ":"") + (d<10 ? d.toFixed(1) : Math.round(d)) + " km away";
   }
-  return { title:name, cat, note, nk, score: popularity(t), wd: (t.wikidata && /^Q\d+$/.test(t.wikidata)) ? t.wikidata : null };
+  return { title:name, cat, note, nk, score: popularity(t), oh: t.opening_hours || "",
+           wd: (t.wikidata && /^Q\d+$/.test(t.wikidata)) ? t.wikidata : null };
 }
 
 // A keyless popularity proxy from OpenStreetMap tags. Real fame (via Wikidata) is
@@ -508,15 +645,37 @@ async function fetchBatch(cat, need){
   if(!state.radius[cat]) state.radius[cat] = CAT_QUERY[cat].r;
   if(!state.buffer[cat]) state.buffer[cat] = [];
 
+  await loadRatings(cat);
+  const dow = isISO(state.day) ? dowOf(state.day) : -1;
+  // If they picked a day, drop anything OSM says is shut that day. Unknown hours stay in.
+  const openThatDay = s => dow < 0 || opensOn(s.oh, dow) !== false;
+
   let guard = 0;
-  while(state.buffer[cat].length < need && guard < 4){
+  while(state.buffer[cat].filter(openThatDay).length < need && guard < 4){
     guard++;
     const fresh = await fetchRaw(cat);
     if(!fresh.length) break; // nothing more to find even after widening \u2014 stop trying
     state.buffer[cat].push(...fresh);
   }
-  state.buffer[cat].sort((a,b) => b.score - a.score); // most popular first; every "More" digs a little deeper
-  const batch = state.buffer[cat].splice(0, need);
+  // attach any real Google rating we have for this place
+  const rmap = state.ratings[cat] || {};
+  state.buffer[cat].forEach(s => {
+    if(s.rated === undefined){
+      const r = rmap[s.nk];
+      s.rated = r || null;
+      s.rscore = r ? ratingScore(r) : null;
+    }
+  });
+  // rated places rank by rating x review count; anything Google doesn't know falls back to fame
+  state.buffer[cat].sort((a,b) =>
+    (b.rscore != null) - (a.rscore != null) ||
+    (b.rscore != null ? b.rscore - a.rscore : b.score - a.score));
+
+  const batch = [];
+  for(let i=0; i<state.buffer[cat].length && batch.length<need; ){
+    if(openThatDay(state.buffer[cat][i])) batch.push(state.buffer[cat].splice(i,1)[0]);
+    else i++;
+  }
   batch.forEach(s => { state.seen[cat].add(s.nk); state.byNk[s.nk] = s; });
   return batch;
 }
@@ -550,6 +709,19 @@ function renderLogin(){
       <p id="lg-err" class="notice warn" style="display:none;margin-top:16px"></p>
     </div>
     <p class="hint" style="margin-top:18px">No account yet? Create one in PlanWise first, then come back here.</p>
+
+    ${RATINGS_PROXY ? `
+    <div class="card pad demo" style="max-width:560px;margin-top:26px">
+      <p class="eyebrow">Try it first \u00b7 no account needed</p>
+      <h3 class="h" style="font-size:21px;margin-bottom:6px">See the top-rated places anywhere.</h3>
+      ${demoUsed()
+        ? `<p class="lede" style="margin-bottom:14px">You\u2019ve used your free look on this device. Log in above for as many as you like.</p>
+           <button class="btn btn-ghost" disabled>Free look used</button>`
+        : `<p class="lede" style="margin-bottom:14px">Real Google ratings and review counts, ranked best-first. One free look on this device.</p>
+           ${exploreForm("dm-place","dm-type","","restaurants")}
+           <p id="dm-err" class="notice warn" style="display:none;margin-bottom:12px"></p>
+           <button class="btn btn-coral" data-act="demo-go">See top-rated places \u2197</button>`}
+    </div>` : ""}
   `;
 }
 
@@ -560,6 +732,16 @@ function renderTripSelect(){
     <h2 class="h">Which trip are we planning?</h2>
     <p class="lede">Pick one of your PlanWise trips and I'll find ideas for where you're going.</p>
     <div id="trips-wrap"><div class="thinking"><span class="dots"><i></i><i></i><i></i></span> Loading your trips\u2026</div></div>
+    ${RATINGS_PROXY ? `
+    <div class="card pad" style="max-width:560px;margin-top:30px">
+      <p class="eyebrow">Explore ratings \u00b7 unlimited</p>
+      <h3 class="h" style="font-size:21px;margin-bottom:6px">Look up any place, any time.</h3>
+      <p class="lede" style="margin-bottom:14px">Top-rated spots anywhere, ranked by rating and review count \u2014 as often as you like.</p>
+      ${exploreForm("xp-place","xp-type", (LS.get("pwe_recent")||[])[0]?.dest || "", "restaurants")}
+      <p id="xp-err" class="notice warn" style="display:none;margin-bottom:12px"></p>
+      <button class="btn btn-coral" data-act="explore-go">See top-rated places \u2197</button>
+    </div>` : ""}
+
     <details class="code-fallback" style="margin-top:28px">
       <summary>Have a trip code instead?</summary>
       <div class="card pad" style="max-width:520px;margin-top:12px">
@@ -637,6 +819,19 @@ function renderSuggest(){
       ? "\u2728 Preview mode \u2014 connect a trip to add ideas to a real board."
       : (boardCount ? `\u2728 ${boardCount} plan${boardCount===1?"":"s"} already on this trip's board \u2014 I'll skip repeats.` : `\u2728 This trip's board is empty \u2014 let's fill it.`)}</div>
 
+    ${(!state.preview && state.days.length) ? `
+    <div class="dayrow">
+      <label class="daypick"><span>Adding to</span>
+        <select id="day-sel">
+          <option value="TBD"${state.day==="TBD"?" selected":""}>TBD (no date yet)</option>
+          ${state.days.map(d=>`<option value="${esc(d)}"${state.day===d?" selected":""}>${esc(fmtDate(d))}</option>`).join("")}
+        </select>
+      </label>
+      <button class="btn btn-ghost btn-sm" data-act="add-cal" title="Exports whatever is winning the vote for each day, right now">\u{1F4C5} Add to calendar</button>
+    </div>
+    ${isISO(state.day) ? `<p class="hint" style="margin:-6px 0 18px">Showing places open ${esc(fmtDate(state.day))} \u2014 anything listed as closed that day is hidden.</p>` : ""}
+    ` : ""}
+
     <p class="eyebrow">What kind of ideas?</p>
     <div class="chips" id="chips">
       ${CHIP_ORDER.map(c=>`<button class="chip" data-cat="${esc(c)}" aria-pressed="${c===state.cat}">${esc(c)}</button>`).join("")}
@@ -653,6 +848,7 @@ function suggestionCard(s){
   return `<div class="sug card${added?" added":""}" data-nk="${esc(s.nk)}">
     <div class="cat">${esc(s.cat)}</div>
     <h4>${esc(s.title)}</h4>
+    ${s.rated ? `<p class="rating"><span class="rstars">${stars(s.rated.rating)}</span> ${s.rated.rating.toFixed(1)} <span class="rcount">(${s.rated.reviews.toLocaleString()})</span></p>` : ""}
     <p class="note">${esc(s.note||"")}</p>
     ${added
       ? `<span class="added-tag">\u2713 Added to trip</span>`
@@ -721,6 +917,7 @@ async function addToTrip(nk, btn){
     addedBy: me,
     addedByName: state.user.displayName,
     via: "planwiseer",
+    day: state.day || "TBD",
     createdAt: Date.now(),
     votes: { [me]: true }
   };
@@ -860,8 +1057,30 @@ document.addEventListener("click", async (ev) => {
   else if(act === "change-stay"){ renderStayStep(state.stay ? state.stay.name : ""); }
   else if(act === "switch"){ state.fam=null; state.fid=null; state.stay=null; state.preview=false; renderTripSelect(); }
   else if(act === "reload-trips"){ paintMyTrips(); }
+  else if(act === "add-cal"){ downloadItinerary(); }
+  else if(act === "demo-go" || act === "explore-go"){
+    const demo = act === "demo-go";
+    const place = (document.getElementById(demo?"dm-place":"xp-place").value || "").trim();
+    const err = document.getElementById(demo?"dm-err":"xp-err");
+    if(!place){ err.style.display="block"; err.textContent="Type a place first \u2014 a city works best."; return; }
+    err.style.display="none";
+    const type = document.getElementById(demo?"dm-type":"xp-type").value;
+    // the demo is one per device; logged-in accounts are unlimited
+    if(demo) LS.set("pwe_demo_used", { at: Date.now(), place });
+    window.open(exploreUrl(place, type), "_blank", "noopener");
+    if(demo) renderLogin();
+  }
   else if(act === "more"){ loadMoreBatch(t); }
   else if(act === "retry"){ loadSuggestions(true); }
+});
+
+// Changing the day re-filters to what's actually open then
+document.addEventListener("change", (ev) => {
+  if(ev.target && ev.target.id === "day-sel"){
+    state.day = ev.target.value;
+    state.seen = {}; state.radius = {}; state.buffer = {}; state.byNk = {};
+    renderSuggest();
+  }
 });
 
 // Enter key submits the visible form
@@ -869,6 +1088,8 @@ document.addEventListener("keydown", (ev) => {
   if(ev.key !== "Enter") return;
   const id = ev.target && ev.target.id;
   if(id === "lg-user" || id === "lg-pass"){ ev.preventDefault(); document.querySelector('[data-act="login"]').click(); }
+  if(id === "dm-place"){ ev.preventDefault(); document.querySelector('[data-act="demo-go"]')?.click(); }
+  if(id === "xp-place"){ ev.preventDefault(); document.querySelector('[data-act="explore-go"]')?.click(); }
   if(id === "code-in"){ ev.preventDefault(); document.querySelector('[data-act="load-trip"]').click(); }
   if(id === "stay-in"){ ev.preventDefault(); document.querySelector('[data-act="save-stay"]').click(); }
 });
