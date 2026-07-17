@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BlockScope — Scratch stats, projects & play</title>
+<meta name="description" content="Look up any Scratcher, dig into their stats, and play their projects.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230B1026'/><rect x='6' y='17' width='4.5' height='9' rx='1.5' fill='%234C97FF'/><rect x='13.7' y='11' width='4.5' height='15' rx='1.5' fill='%23CF63CF'/><rect x='21.4' y='6' width='4.5' height='20' rx='1.5' fill='%23FFBF00'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   BlockScope tokens — palette borrowed from the Scratch editor's
+   block categories, so colour always means something:
+   motion=views  sound=loves  events=favourites  operators=remixes
+   ============================================================ */
+:root{
+  --bg:#0B1026; --surface:#151B3D; --surface2:#1D2551; --line:#2E3872;
+  --text:#EAEEFF; --muted:#8E97CE; --muted2:#666FA6;
+  --motion:#4C97FF; --sound:#CF63CF; --events:#FFBF00; --operators:#59C059;
+  --control:#FFAB19; --looks:#9966FF; --sensing:#5CB1D6; --myblocks:#FF6680;
+  --accent:var(--control);
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+  --r:14px;
+  --display:'Fredoka',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.55;
+  background-image:radial-gradient(1200px 600px at 80% -10%,rgba(76,151,255,.10),transparent 60%),
+                   radial-gradient(900px 500px at 0% 0%,rgba(153,102,255,.08),transparent 55%);
+  background-attachment:fixed;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--events);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(11,16,38,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:18px;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:600;font-size:20px;letter-spacing:-.01em}
+.logo svg{display:block}
+.nav{display:flex;gap:4px;margin-left:8px}
+.nav a{padding:7px 12px;border-radius:9px;color:var(--muted);font-weight:500;font-size:14px}
+.nav a:hover{background:var(--surface2);color:var(--text)}
+.nav a.on{color:var(--text);background:var(--surface2)}
+.spacer{flex:1}
+
+/* ---------- Scratch block shapes (the signature) ---------- */
+.hat{position:relative;background:var(--surface);border:1px solid var(--line);
+  border-radius:34px 34px 8px 8px;padding:30px 28px 30px;box-shadow:var(--shadow)}
+.hat::after{content:"";position:absolute;left:32px;bottom:-9px;width:34px;height:9px;
+  background:var(--surface);border:1px solid var(--line);border-top:none;border-radius:0 0 9px 9px}
+.stack{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:14px 16px}
+.stack::before{content:"";position:absolute;left:18px;top:-1px;width:26px;height:7px;
+  background:var(--bg);border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px}
+
+/* oval reporter input, like a Scratch input slot */
+.slot{display:flex;align-items:center;gap:10px;background:var(--bg);border:2px solid var(--line);
+  border-radius:999px;padding:0 8px 0 18px;transition:border-color .15s,box-shadow .15s}
+.slot:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px rgba(255,171,25,.14)}
+.slot input{flex:1;background:none;border:none;outline:none;padding:14px 0;font-size:16px;min-width:0}
+.slot input::placeholder{color:var(--muted2)}
+
+.btn{display:inline-flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--line);
+  border-radius:9px;padding:9px 14px;font-weight:600;font-size:14px;transition:.15s}
+.btn:hover{background:var(--line)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#241800}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.round{border-radius:999px;padding:11px 20px}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* ---------- home ---------- */
+.hero{padding:64px 0 40px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted2);margin-bottom:14px}
+.hero h1{font-family:var(--display);font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.08;margin:0 0 6px;letter-spacing:-.02em}
+.hero h1 em{font-style:normal;color:var(--events)}
+.hero p.sub{color:var(--muted);margin:0 0 26px;max-width:52ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--muted);cursor:pointer}
+.chip:hover{color:var(--text);border-color:var(--muted2)}
+
+/* ---------- section headers ---------- */
+.sechead{display:flex;align-items:baseline;gap:12px;margin:38px 0 16px}
+.sechead h2{font-family:var(--display);font-weight:600;font-size:22px;margin:0;letter-spacing:-.01em}
+.sechead .rule{flex:1;height:1px;background:var(--line)}
+.sechead .count{font-family:var(--mono);font-size:13px;color:var(--muted2)}
+
+/* ---------- project grid ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+  display:flex;flex-direction:column;transition:transform .16s,border-color .16s;position:relative}
+.card:hover{transform:translateY(-3px);border-color:var(--muted2)}
+.thumb{aspect-ratio:4/3;background:#fff;position:relative;overflow:hidden;display:block}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(11,16,38,.55);opacity:0;transition:opacity .16s}
+.card:hover .thumb .play{opacity:1}
+.thumb .play span{background:var(--operators);color:#06210a;border-radius:999px;width:52px;height:52px;
+  display:grid;place-items:center;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.card .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:3px;flex:1}
+.card h3{font-family:var(--display);font-weight:500;font-size:16px;margin:0;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .by{font-size:13px;color:var(--muted)}
+.card .date{font-family:var(--mono);font-size:11.5px;color:var(--muted2);margin-top:auto;padding-top:8px}
+.metrics{display:flex;gap:12px;padding:9px 14px;border-top:1px solid var(--line);background:var(--surface2);
+  font-family:var(--mono);font-size:12px;color:var(--muted)}
+.m{display:flex;align-items:center;gap:4px}
+.m.views{color:var(--motion)} .m.loves{color:var(--sound)} .m.favs{color:var(--events)} .m.remix{color:var(--operators)}
+.pin{position:absolute;top:8px;left:8px;background:var(--events);color:#241800;font-size:11px;font-weight:700;
+  border-radius:999px;padding:2px 9px;z-index:2;font-family:var(--body)}
+
+/* ---------- profile ---------- */
+.profile{display:grid;grid-template-columns:290px 1fr;gap:28px;padding:28px 0 60px;align-items:start}
+.side{position:sticky;top:84px}
+.avatar{width:112px;height:112px;border-radius:22px;background:var(--surface2);border:1px solid var(--line);display:block}
+.uname{font-family:var(--display);font-weight:600;font-size:29px;margin:14px 0 2px;letter-spacing:-.02em;word-break:break-word}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;vertical-align:middle}
+.badge.st{background:var(--myblocks);color:#2b0009}
+.badge.you{background:var(--operators);color:#06210a}
+.bio{white-space:pre-wrap;font-size:14px;color:var(--muted);margin:12px 0 0;word-break:break-word}
+.bio a{color:var(--motion)}
+.facts{list-style:none;margin:18px 0 0;padding:18px 0 0;border-top:1px solid var(--line);display:grid;gap:9px;font-size:13.5px;color:var(--muted)}
+.facts li{display:flex;gap:9px;align-items:center}
+.facts b{color:var(--text);font-weight:500}
+.sidelinks{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:18px}
+.tab{position:relative;padding:8px 14px;border-radius:9px;color:var(--muted);font-weight:600;font-size:14px;background:var(--surface)}
+.tab::before{content:"";position:absolute;left:14px;top:-1px;width:20px;height:6px;background:var(--bg);
+  border:1px solid var(--line);border-top:none;border-radius:0 0 7px 7px;opacity:0}
+.tab:hover{color:var(--text)}
+.tab.on{color:#0B1026;background:var(--accent)}
+.tab .n{font-family:var(--mono);font-size:11.5px;opacity:.65;margin-left:5px}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.toolbar .slot{flex:1;min-width:180px;border-width:1px;padding-left:14px}
+.toolbar .slot input{padding:9px 0;font-size:14px}
+select.sel{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:14px;cursor:pointer}
+
+/* ---------- stats ---------- */
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:12px;margin-bottom:26px}
+.statblock{position:relative;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--c,var(--line));
+  border-radius:9px;padding:14px 16px}
+.statblock::before{content:"";position:absolute;left:16px;top:-1px;width:22px;height:6px;background:var(--bg);
+  border:1px solid var(--line);border-top:none;border-radius:0 0 7px 7px}
+.statblock .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
+.statblock .v{font-family:var(--mono);font-weight:600;font-size:26px;color:var(--c,var(--text));line-height:1.25;margin-top:3px}
+.statblock .s{font-size:12px;color:var(--muted2)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.panel h3{font-family:var(--display);font-weight:600;font-size:17px;margin:0 0 14px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:10px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px}
+.bars{display:grid;gap:7px}
+.barrow{display:grid;grid-template-columns:132px 1fr 62px;gap:10px;align-items:center;font-size:13px}
+.barrow .lbl{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bartrack{background:var(--bg);border-radius:5px;height:16px;overflow:hidden;border:1px solid var(--line)}
+.barfill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.barrow .val{font-family:var(--mono);font-size:12.5px;color:var(--muted);text-align:right}
+
+/* ---------- people ---------- */
+.people{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.person{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 10px;text-align:center;transition:.15s}
+.person:hover{border-color:var(--muted2);transform:translateY(-2px)}
+.person img{width:60px;height:60px;border-radius:14px;background:var(--surface2)}
+.person .n{font-weight:600;font-size:13.5px;margin-top:9px;word-break:break-word}
+
+/* ---------- player ---------- */
+.modal{position:fixed;inset:0;z-index:100;background:rgba(6,9,22,.8);backdrop-filter:blur(6px);
+  display:flex;align-items:flex-start;justify-content:center;padding:28px 16px;overflow:auto}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px;max-width:1000px;width:100%;box-shadow:var(--shadow)}
+.sheet .top{display:flex;align-items:flex-start;gap:14px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.sheet h2{font-family:var(--display);font-weight:600;font-size:21px;margin:0}
+.stage{background:#0E1330;padding:14px 14px 0;display:flex;justify-content:center}
+.stageframe{width:100%;max-width:640px}
+.stagebar{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);
+  border:1px solid var(--line);border-bottom:none;border-radius:10px 10px 0 0}
+.stagebar .dot{width:9px;height:9px;border-radius:50%}
+.stagebar .name{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:auto}
+.stageframe iframe{display:block;width:100%;aspect-ratio:480/360;border:1px solid var(--line);border-radius:0 0 10px 10px;background:#fff}
+.pbody{padding:20px;display:grid;gap:16px}
+.pdesc{white-space:pre-wrap;font-size:14px;color:var(--muted);max-height:200px;overflow:auto;word-break:break-word}
+.pdesc h4{color:var(--text);font-family:var(--display);font-size:14px;margin:0 0 5px;letter-spacing:.04em;text-transform:uppercase}
+.comment{border-top:1px solid var(--line);padding:11px 0;display:flex;gap:10px;font-size:13.5px}
+.comment img{width:32px;height:32px;border-radius:9px;flex:none}
+.comment .cn{font-weight:600;font-size:13px}
+.comment .ct{color:var(--muted);white-space:pre-wrap;word-break:break-word}
+
+/* ---------- my page (owner editable) ---------- */
+.mypage{border:1px solid var(--line);border-radius:var(--r);padding:20px;background:
+  linear-gradient(180deg,rgba(255,191,0,.05),transparent 60%),var(--surface)}
+.mypage h2{font-family:var(--display);font-size:24px;margin:0 0 6px;letter-spacing:-.01em}
+.mypage .about{white-space:pre-wrap;color:var(--muted);font-size:14.5px}
+.field{display:grid;gap:6px;margin-bottom:14px}
+.field label{font-size:12.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.field input,.field textarea{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+  font-size:14px;outline:none;resize:vertical;width:100%}
+.field input:focus,.field textarea:focus{border-color:var(--accent)}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.sw{width:30px;height:30px;border-radius:8px;border:2px solid transparent;cursor:pointer}
+.sw.on{border-color:var(--text)}
+.lockmsg{border:1px dashed var(--line);border-radius:var(--r);padding:34px 20px;text-align:center;color:var(--muted)}
+
+/* ---------- misc ---------- */
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:44px 20px;text-align:center;color:var(--muted)}
+.empty b{color:var(--text);display:block;font-family:var(--display);font-size:17px;margin-bottom:6px;font-weight:600}
+.err{border:1px solid var(--myblocks);background:rgba(255,102,128,.08);border-radius:var(--r);padding:18px;color:#ffc9d3}
+.skel{background:linear-gradient(90deg,var(--surface),var(--surface2),var(--surface));background-size:200% 100%;
+  animation:sh 1.2s linear infinite;border-radius:var(--r);height:250px}
+@keyframes sh{to{background-position:-200% 0}}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--surface2);
+  border:1px solid var(--line);border-radius:10px;padding:11px 18px;z-index:200;box-shadow:var(--shadow);font-size:14px}
+.center{display:flex;justify-content:center;margin:22px 0}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cmpbar{display:grid;grid-template-columns:1fr 96px 1fr;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.cmpbar .k{text-align:center;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.cmpbar .track{height:14px;background:var(--bg);border:1px solid var(--line);border-radius:5px;overflow:hidden;display:flex}
+.cmpbar .track.l{justify-content:flex-end}
+.cmpbar .track i{height:100%;display:block}
+.cmpbar .num{font-family:var(--mono);font-size:13px}
+footer{border-top:1px solid var(--line);padding:26px 0;color:var(--muted2);font-size:13px}
+@media (max-width:900px){.profile{grid-template-columns:1fr}.side{position:static}.cmp{grid-template-columns:1fr}}
+@media (max-width:560px){.nav a{padding:7px 9px;font-size:13px}.hero{padding:34px 0 24px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="logo" href="#/">
+      <svg width="26" height="26" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#151B3D"/><rect x="6" y="17" width="4.5" height="9" rx="1.5" fill="#4C97FF"/><rect x="13.7" y="11" width="4.5" height="15" rx="1.5" fill="#CF63CF"/><rect x="21.4" y="6" width="4.5" height="20" rx="1.5" fill="#FFBF00"/></svg>
+      BlockScope
+    </a>
+    <nav class="nav" id="nav">
+      <a href="#/">Explore</a>
+      <a href="#/compare">Compare</a>
+    </nav>
+    <div class="spacer"></div>
+    <div id="authslot"></div>
+  </div>
+</header>
+
+<main id="app"><div class="wrap"><div class="skel" style="margin:40px 0"></div></div></main>
+
+<footer><div class="wrap">
+  BlockScope is a fan-made viewer for public Scratch data. Not affiliated with the Scratch Team.
+  Projects play through <a href="https://turbowarp.org" style="color:var(--motion)">TurboWarp</a>; sign-in is handled by
+  <a href="https://auth.itinerary.eu.org" style="color:var(--motion)">Scratch Auth</a>.
+</div></footer>
+
+<script>
+/* ============================================================
+   CONFIG — set these once and the whole site follows
+   ============================================================ */
+const CONFIG = {
+  appName: 'BlockScope',
+  // Your Firebase Realtime Database URL, e.g. 'https://jump-f9374-default-rtdb.firebaseio.com'
+  // Leave '' and custom pages just live for the current session.
+  firebaseDB: '',
+  // Usernames that get an extra "staff" look on their page (optional)
+  crew: ['blockblock2']
+};
+
+/* ---------- tiny helpers ---------- */
+const $ = (s,r=document)=>r.querySelector(s);
+const app = $('#app');
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = n => (n??0).toLocaleString('en-US');
+const compact = n => n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(n>=1e4?0:1)+'k':String(n??0);
+const date = s => s? new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+const ago = s => {
+  if(!s) return '';
+  const d=(Date.now()-new Date(s))/864e5;
+  if(d<1) return 'today'; if(d<2) return 'yesterday'; if(d<30) return Math.floor(d)+' days ago';
+  if(d<365) return Math.floor(d/30)+' months ago'; return (d/365).toFixed(1)+' years ago';
+};
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2600);
+}
+/* storage that never throws (sandboxed iframes block it — we just fall back to memory) */
+const mem = {};
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch{ return mem[k]??null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch{ mem[k]=v; } },
+  del(k){ try{ localStorage.removeItem(k); }catch{ delete mem[k]; } }
+};
+/* linkify Scratch @mentions and bare URLs in bios */
+function rich(text){
+  return esc(text).replace(/https?:\/\/[^\s<]+/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u}</a>`)
+    .replace(/@([\w-]{3,20})/g,(m,u)=>`<a href="#/u/${u}">@${u}</a>`);
+}
+
+/* ---------- Scratch API (with CORS proxy fallback) ---------- */
+const API='https://api.scratch.mit.edu';
+const cache=new Map();
+async function api(path,{fresh=false}={}){
+  if(!fresh && cache.has(path)) return cache.get(path);
+  const url=API+path;
+  const tries=[url,'https://api.allorigins.win/raw?url='+encodeURIComponent(url)];
+  let lastErr;
+  for(const t of tries){
+    try{
+      const r=await fetch(t);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const j=await r.json();
+      cache.set(path,j);
+      return j;
+    }catch(e){ lastErr=e; }
+  }
+  throw lastErr;
+}
+const thumb = id => `https://uploads.scratch.mit.edu/get_image/project/${id}_480x360.png`;
+const face  = id => `https://cdn2.scratch.mit.edu/get_image/user/${id}_90x90.png`;
+
+/* ---------- Scratch Auth ---------- */
+const AUTH='https://auth.itinerary.eu.org';
+const session = { user: store.get('bs_user') || null };
+
+function signIn(){
+  const back = location.origin + location.pathname; // Scratch Auth appends ?privateCode=...
+  store.set('bs_return', location.hash || '#/');
+  location.href = `${AUTH}/auth/?redirect=${btoa(back)}&name=${encodeURIComponent(CONFIG.appName)}`;
+}
+function signOut(){
+  session.user=null; store.del('bs_user'); renderAuth(); route();
+  toast('Signed out');
+}
+async function finishSignIn(){
+  const q=new URLSearchParams(location.search);
+  const code=q.get('privateCode');
+  if(!code) return;
+  history.replaceState(null,'',location.pathname); // clean the URL right away
+  try{
+    const vUrl=`${AUTH}/api/auth/verifyToken?privateCode=${encodeURIComponent(code)}`;
+    let data;
+    try{ data=await (await fetch(vUrl)).json(); }
+    catch{ data=await (await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(vUrl))).json(); }
+    // Check the redirect Scratch Auth recorded actually points at us, so another
+    // site can't hand us a code it collected on its own login page.
+    const home=location.origin+location.pathname;
+    if(!data.valid) return toast("Sign-in didn't complete — try again");
+    if(data.redirect && data.redirect.replace(/\/$/,'') !== home.replace(/\/$/,'')) return toast('Sign-in blocked: redirect mismatch');
+    session.user=data.username; store.set('bs_user',data.username);
+    location.hash = store.get('bs_return') || ('#/u/'+data.username);
+    toast('Signed in as '+data.username);
+  }catch(e){ toast('Scratch Auth is unreachable right now'); }
+}
+const isMe = u => !!session.user && session.user.toLowerCase()===String(u).toLowerCase();
+
+function renderAuth(){
+  const s=$('#authslot');
+  if(session.user){
+    s.innerHTML=`<div style="display:flex;gap:8px;align-items:center">
+      <a class="btn sm" href="#/u/${esc(session.user)}/page" style="gap:8px">
+        <img src="${face(0)}" onerror="this.remove()" style="display:none">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--operators)"></span>
+        ${esc(session.user)}</a>
+      <button class="btn sm" id="out">Sign out</button></div>`;
+    $('#out').onclick=signOut;
+  }else{
+    s.innerHTML=`<button class="btn primary sm round" id="in">Sign in with Scratch</button>`;
+    $('#in').onclick=signIn;
+  }
+}
+
+/* ---------- custom pages (owner-only content) ---------- */
+const pagesMem={};
+async function getPage(u){
+  const key=u.toLowerCase();
+  if(!CONFIG.firebaseDB) return pagesMem[key]||null;
+  try{
+    const r=await fetch(`${CONFIG.firebaseDB}/pages/${key}.json`);
+    return await r.json();
+  }catch{ return pagesMem[key]||null; }
+}
+async function savePage(u,data){
+  const key=u.toLowerCase();
+  pagesMem[key]=data;
+  if(!CONFIG.firebaseDB) return 'session';
+  const r=await fetch(`${CONFIG.firebaseDB}/pages/${key}.json`,{
+    method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  if(!r.ok) throw new Error('save failed');
+  return 'saved';
+}
+
+/* ---------- components ---------- */
+function projectCard(p,{showAuthor=true,pinned=false}={}){
+  const st=p.stats||{};
+  return `<article class="card">
+    ${pinned?'<span class="pin">Pinned</span>':''}
+    <a class="thumb" href="#/p/${p.id}">
+      <img loading="lazy" src="${p.image||thumb(p.id)}" alt="" onerror="this.style.opacity=.15">
+      <span class="play"><span><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span></span>
+    </a>
+    <div class="body">
+      <h3><a href="#/p/${p.id}">${esc(p.title||'Untitled')}</a></h3>
+      ${showAuthor&&p.author?`<div class="by">by <a href="#/u/${esc(p.author.username)}" style="color:var(--muted)">${esc(p.author.username)}</a></div>`:''}
+      <div class="date">${date(p.history?.shared||p.history?.created)}</div>
+    </div>
+    <div class="metrics">
+      <span class="m views" title="views">👁 ${compact(st.views)}</span>
+      <span class="m loves" title="loves">♥ ${compact(st.loves)}</span>
+      <span class="m favs" title="favourites">★ ${compact(st.favorites)}</span>
+      <span class="m remix" title="remixes">⤳ ${compact(st.remixes)}</span>
+    </div>
+  </article>`;
+}
+const personCard = u => {
+  const id=u.id||u.profile?.id;
+  return `<a class="person" href="#/u/${esc(u.username)}">
+    <img loading="lazy" src="${face(u.id)}" alt="" onerror="this.style.opacity=.2">
+    <div class="n">${esc(u.username)}</div></a>`;
+};
+const statBlock=(k,v,color,sub='')=>`<div class="statblock" style="--c:${color}">
+  <div class="k">${k}</div><div class="v">${v}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`;
+
+/* ---------- data loading ---------- */
+async function loadAllProjects(username,onProgress){
+  const key='all:'+username.toLowerCase();
+  if(cache.has(key)) return cache.get(key);
+  const all=[]; let off=0;
+  while(off<1200){
+    const page=await api(`/users/${username}/projects?limit=40&offset=${off}`);
+    if(!Array.isArray(page)||!page.length) break;
+    all.push(...page); off+=40;
+    onProgress&&onProgress(all.length);
+    if(page.length<40) break;
+  }
+  cache.set(key,all);
+  return all;
+}
+const totals = ps => ps.reduce((a,p)=>{
+  const s=p.stats||{};
+  a.views+=s.views||0; a.loves+=s.loves||0; a.favorites+=s.favorites||0; a.remixes+=s.remixes||0; return a;
+},{views:0,loves:0,favorites:0,remixes:0});
+
+/* ============================================================
+   VIEWS
+   ============================================================ */
+function viewHome(){
+  app.innerHTML=`<div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Scratch, measured</div>
+      <div class="hat" style="max-width:720px">
+        <h1>when <em>@anyone</em> is looked up,<br>show me everything.</h1>
+        <p class="sub">Stats, studios, followers, and a player for every project — for any Scratcher, on one page.</p>
+        <div class="slot" style="max-width:520px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted2)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+          <input id="q" placeholder="username, project link, or project ID" autocomplete="off" spellcheck="false">
+          <button class="btn primary round" id="go">Go</button>
+        </div>
+        <div class="chips" id="chips">
+          ${['blockblock2','griffpatch','darkapple4','chickennugetdog3'].map(u=>`<button class="chip" data-u="${u}">@${u}</button>`).join('')}
+        </div>
+      </div>
+    </section>
+    <div class="sechead"><h2>Trending right now</h2><span class="rule"></span><span class="count" id="tcount"></span></div>
+    <div class="grid" id="trend">${'<div class="skel" style="height:250px"></div>'.repeat(8)}</div>
+  </div>`;
+
+  const go=()=>{
+    const v=$('#q').value.trim(); if(!v) return;
+    const m=v.match(/projects\/(\d+)/)||v.match(/^(\d{5,})$/);
+    location.hash = m ? `#/p/${m[1]}` : `#/u/${v.replace(/^@/,'').replace(/\/$/,'').split('/').pop()}`;
+  };
+  $('#go').onclick=go;
+  $('#q').onkeydown=e=>{ if(e.key==='Enter') go(); };
+  $('#chips').onclick=e=>{ const b=e.target.closest('[data-u]'); if(b) location.hash='#/u/'+b.dataset.u; };
+  $('#q').focus();
+
+  api('/explore/projects?limit=20&offset=0&language=en&mode=trending&q=*')
+    .then(ps=>{ $('#trend').innerHTML=ps.map(p=>projectCard(p)).join(''); $('#tcount').textContent=ps.length+' projects'; })
+    .catch(()=>{ $('#trend').innerHTML=`<div class="err" style="grid-column:1/-1">Scratch's explore feed didn't answer. Search for a user above — that path still works.</div>`; });
+}
+
+async function viewUser(username,tab='projects'){
+  app.innerHTML=`<div class="wrap"><div class="skel" style="margin:28px 0;height:320px"></div></div>`;
+  let u;
+  try{ u=await api(`/users/${encodeURIComponent(username)}`); }
+  catch{
+    app.innerHTML=`<div class="wrap"><div class="empty" style="margin:60px 0">
+      <b>No Scratcher called @${esc(username)}</b>
+      Check the spelling, or <a href="#/" style="color:var(--events)">search again</a>.</div></div>`;
+    return;
+  }
+  const page = await getPage(u.username) || {};
+  const accent = page.accent || '#FFAB19';
+  const tabs=[['projects','Projects'],['stats','Statistics'],['page','Page'],['studios','Studios'],
+              ['followers','Followers'],['following','Following'],['favorites','Favourites']];
+  const mine = isMe(u.username);
+
+  app.innerHTML=`<div class="wrap"><div class="profile" style="--accent:${accent}">
+    <aside class="side">
+      <img class="avatar" src="${face(u.id)}" alt="${esc(u.username)}'s avatar">
+      <h1 class="uname">${esc(u.username)}
+        ${u.scratchteam?'<span class="badge st">Scratch Team</span>':''}
+        ${mine?'<span class="badge you">You</span>':''}</h1>
+      ${page.headline?`<div style="color:${accent};font-weight:600;font-size:14px">${esc(page.headline)}</div>`:''}
+      <p class="bio">${rich(u.profile?.bio||'No about me yet.')}</p>
+      ${u.profile?.status?`<div style="margin-top:16px"><div class="k" style="font-size:12px;color:var(--muted2);text-transform:uppercase;letter-spacing:.07em;font-weight:600">Working on</div>
+        <p class="bio" style="margin-top:4px">${rich(u.profile.status)}</p></div>`:''}
+      <ul class="facts">
+        <li>📅 Joined <b>${date(u.history?.joined)}</b></li>
+        <li>🌍 <b>${esc(u.profile?.country||'—')}</b></li>
+        <li>🆔 <span class="mono">${u.id}</span></li>
+        <li>⏳ <b>${ago(u.history?.joined)}</b> on Scratch</li>
+      </ul>
+      <div class="sidelinks">
+        <a class="btn" href="https://scratch.mit.edu/users/${esc(u.username)}" target="_blank" rel="noopener">View on Scratch ↗</a>
+        <a class="btn" href="#/compare/${esc(u.username)}">Compare with someone</a>
+      </div>
+    </aside>
+    <section>
+      <div class="tabs">${tabs.map(([k,l])=>`<a class="tab ${k===tab?'on':''}" href="#/u/${esc(u.username)}/${k}">${l}</a>`).join('')}</div>
+      <div id="tabbody"></div>
+    </section>
+  </div></div>`;
+
+  const body=$('#tabbody');
+  const fn={projects:tabProjects,stats:tabStats,page:tabPage,studios:tabStudios,
+            followers:tabFollowers,following:tabFollowing,favorites:tabFavorites}[tab]||tabProjects;
+  fn(u,body,page);
+}
+
+/* ----- tab: projects ----- */
+async function tabProjects(u,el,page){
+  el.innerHTML=`<div class="toolbar">
+      <div class="slot"><input id="pq" placeholder="Filter these projects…"></div>
+      <select class="sel" id="sort">
+        <option value="shared">Newest</option><option value="oldest">Oldest</option>
+        <option value="views">Most viewed</option><option value="loves">Most loved</option>
+        <option value="favorites">Most favourited</option><option value="remixes">Most remixed</option>
+        <option value="title">A–Z</option>
+      </select>
+      <span class="mono" style="color:var(--muted2);font-size:13px" id="pcount">loading…</span>
+    </div><div class="grid" id="pgrid">${'<div class="skel" style="height:250px"></div>'.repeat(6)}</div>`;
+  let all;
+  try{ all=await loadAllProjects(u.username,n=>{ const c=$('#pcount'); if(c) c.textContent=n+' loaded…'; }); }
+  catch{ el.innerHTML=`<div class="err">Couldn't load projects. Scratch's API may be rate-limiting — wait a moment and refresh.</div>`; return; }
+  if(!all.length){ el.innerHTML=`<div class="empty"><b>Nothing shared yet</b>@${esc(u.username)} has no public projects.</div>`; return; }
+  const pinned=(page.pinned||[]).map(String);
+  const draw=()=>{
+    const q=$('#pq').value.trim().toLowerCase();
+    const s=$('#sort').value;
+    let list=all.filter(p=>!q||(p.title||'').toLowerCase().includes(q));
+    const key={views:'views',loves:'loves',favorites:'favorites',remixes:'remixes'}[s];
+    if(key) list.sort((a,b)=>(b.stats?.[key]||0)-(a.stats?.[key]||0));
+    else if(s==='title') list.sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+    else if(s==='oldest') list.sort((a,b)=>new Date(a.history?.shared||0)-new Date(b.history?.shared||0));
+    else list.sort((a,b)=>new Date(b.history?.shared||0)-new Date(a.history?.shared||0));
+    list.sort((a,b)=>(pinned.includes(String(b.id))?1:0)-(pinned.includes(String(a.id))?1:0));
+    $('#pcount').textContent=`${list.length} of ${all.length}`;
+    $('#pgrid').innerHTML=list.length
+      ? list.map(p=>projectCard(p,{showAuthor:false,pinned:pinned.includes(String(p.id))})).join('')
+      : `<div class="empty" style="grid-column:1/-1"><b>No matches</b>Nothing here is called "${esc(q)}".</div>`;
+  };
+  $('#pq').oninput=draw; $('#sort').onchange=draw; draw();
+}
+
+/* ----- tab: statistics ----- */
+async function tabStats(u,el){
+  el.innerHTML=`<div class="skel" style="height:200px"></div>`;
+  let all;
+  try{ all=await loadAllProjects(u.username); }catch{ el.innerHTML=`<div class="err">Couldn't load the project history.</div>`; return; }
+  if(!all.length){ el.innerHTML=`<div class="empty"><b>No data to chart</b>Statistics need at least one shared project.</div>`; return; }
+  const t=totals(all), n=all.length;
+  const shared=all.map(p=>p.history?.shared).filter(Boolean).sort();
+  const first=shared[0], last=shared[shared.length-1];
+  const years={}; shared.forEach(d=>{ const y=new Date(d).getFullYear(); years[y]=(years[y]||0)+1; });
+  const ymax=Math.max(...Object.values(years));
+  const top=[...all].sort((a,b)=>(b.stats?.views||0)-(a.stats?.views||0)).slice(0,8);
+  const tmax=Math.max(...top.map(p=>p.stats?.views||0),1);
+  const lovePer = t.views? (t.loves/t.views*100):0;
+
+  el.innerHTML=`
+  <div class="statgrid">
+    ${statBlock('Projects',num(n),'var(--looks)','shared publicly')}
+    ${statBlock('Views',num(t.views),'var(--motion)',`${num(Math.round(t.views/n))} avg`)}
+    ${statBlock('Loves',num(t.loves),'var(--sound)',`${num(Math.round(t.loves/n))} avg`)}
+    ${statBlock('Favourites',num(t.favorites),'var(--events)',`${num(Math.round(t.favorites/n))} avg`)}
+    ${statBlock('Remixes',num(t.remixes),'var(--operators)','by other Scratchers')}
+    ${statBlock('Love rate',lovePer.toFixed(1)+'%','var(--myblocks)','loves per view')}
+  </div>
+
+  <div class="panel">
+    <h3>Projects shared per year</h3>
+    <div class="bars">
+      ${Object.keys(years).sort().map(y=>`<div class="barrow">
+        <span class="lbl mono">${y}</span>
+        <div class="bartrack"><div class="barfill" style="width:${years[y]/ymax*100}%;background:var(--looks)"></div></div>
+        <span class="val">${years[y]}</span></div>`).join('')}
+    </div>
+    <div class="legend"><span>First share <b style="color:var(--text)">${date(first)}</b></span>
+      <span>Latest <b style="color:var(--text)">${date(last)}</b> (${ago(last)})</span></div>
+  </div>
+
+  <div class="panel">
+    <h3>Most viewed projects</h3>
+    <div class="bars">
+      ${top.map(p=>`<div class="barrow">
+        <span class="lbl"><a href="#/p/${p.id}">${esc(p.title||'Untitled')}</a></span>
+        <div class="bartrack"><div class="barfill" style="width:${(p.stats?.views||0)/tmax*100}%;background:var(--motion)"></div></div>
+        <span class="val">${num(p.stats?.views||0)}</span></div>`).join('')}
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Where the engagement lands</h3>
+    <div class="bars">
+      ${[['Views','views','var(--motion)'],['Loves','loves','var(--sound)'],['Favourites','favorites','var(--events)'],['Remixes','remixes','var(--operators)']]
+        .map(([l,k,c])=>`<div class="barrow"><span class="lbl">${l}</span>
+        <div class="bartrack"><div class="barfill" style="width:${t[k]/Math.max(t.views,1)*100}%;background:${c}"></div></div>
+        <span class="val">${num(t[k])}</span></div>`).join('')}
+    </div>
+    <div class="legend">Bars are scaled against total views, so you can see how much attention turns into action.</div>
+  </div>`;
+}
+
+/* ----- tab: page (the owner-only bit) ----- */
+async function tabPage(u,el,page){
+  const mine=isMe(u.username);
+  const p=page||{};
+  const has=p.headline||p.about||(p.links&&p.links.length);
+  const view=()=>`
+    ${has?`<div class="mypage" style="--accent:${p.accent||'#FFAB19'}">
+        <h2>${esc(p.headline||u.username+"'s page")}</h2>
+        <div class="about">${rich(p.about||'')}</div>
+        ${(p.links||[]).length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+          ${p.links.map(l=>`<a class="btn sm" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label||l.url)} ↗</a>`).join('')}
+        </div>`:''}
+        <div style="margin-top:16px;font-size:12px;color:var(--muted2)" class="mono">
+          Written by @${esc(u.username)}${p.updated?' · updated '+ago(p.updated):''}</div>
+      </div>`
+      :`<div class="empty"><b>${esc(u.username)} hasn't written a page yet</b>
+        Only @${esc(u.username)} can add one — it's their corner of BlockScope.</div>`}
+    ${mine?`<div class="center"><button class="btn primary round" id="edit">Edit your page</button></div>`
+      :!session.user?`<div class="center"><button class="btn round" id="signin">Sign in as @${esc(u.username)} to edit this</button></div>`:''}`;
+
+  const edit=()=>`<div class="panel">
+    <h3>Your page</h3>
+    <p style="color:var(--muted);font-size:13.5px;margin-top:-8px">Visible to everyone who opens your profile. Only you can change it.</p>
+    <div class="field"><label>Headline</label><input id="f-head" maxlength="60" value="${esc(p.headline||'')}" placeholder="e.g. Platformers and terrible jokes"></div>
+    <div class="field"><label>About this page</label><textarea id="f-about" rows="6" maxlength="1200" placeholder="What you're building, who you build it with, what's coming next. @mentions and links work.">${esc(p.about||'')}</textarea></div>
+    <div class="field"><label>Pinned project IDs (comma separated)</label><input id="f-pin" value="${esc((p.pinned||[]).join(', '))}" placeholder="1351086587, 1334550348"></div>
+    <div class="field"><label>Links — one per line, as <span class="mono">Label | https://…</span></label>
+      <textarea id="f-links" rows="3" placeholder="My site | https://blockblock2.github.io">${esc((p.links||[]).map(l=>`${l.label} | ${l.url}`).join('\n'))}</textarea></div>
+    <div class="field"><label>Accent colour</label><div class="swatches" id="sw">
+      ${['#FFAB19','#4C97FF','#CF63CF','#59C059','#9966FF','#FF6680','#5CB1D6','#FFBF00']
+        .map(c=>`<button class="sw ${(p.accent||'#FFAB19')===c?'on':''}" data-c="${c}" style="background:${c}" aria-label="${c}"></button>`).join('')}
+    </div></div>
+    <div style="display:flex;gap:8px"><button class="btn primary" id="save">Save page</button>
+      <button class="btn" id="cancel">Cancel</button></div>
+    ${!CONFIG.firebaseDB?`<p style="color:var(--muted2);font-size:12.5px;margin-bottom:0">Heads up: no database is configured, so this saves for this session only. Add your Firebase URL to <span class="mono">CONFIG.firebaseDB</span> to make it stick.</p>`:''}
+  </div>`;
+
+  const mount=(html)=>{
+    el.innerHTML=html;
+    if($('#signin')) $('#signin').onclick=signIn;
+    if($('#edit')) $('#edit').onclick=()=>mount(edit());
+    if($('#cancel')) $('#cancel').onclick=()=>mount(view());
+    if($('#sw')) $('#sw').onclick=e=>{
+      const b=e.target.closest('[data-c]'); if(!b) return;
+      p.accent=b.dataset.c;
+      [...$('#sw').children].forEach(x=>x.classList.toggle('on',x===b));
+    };
+    if($('#save')) $('#save').onclick=async()=>{
+      if(!isMe(u.username)) return toast('Only the owner can save this page');
+      const data={
+        headline:$('#f-head').value.trim().slice(0,60),
+        about:$('#f-about').value.trim().slice(0,1200),
+        accent:p.accent||'#FFAB19',
+        pinned:$('#f-pin').value.split(',').map(s=>s.trim()).filter(s=>/^\d+$/.test(s)).slice(0,6),
+        links:$('#f-links').value.split('\n').map(l=>{
+          const [label,url]=l.split('|').map(s=>(s||'').trim());
+          return url&&/^https?:\/\//.test(url)?{label:label||url,url}:null;
+        }).filter(Boolean).slice(0,5),
+        updated:new Date().toISOString()
+      };
+      $('#save').disabled=true; $('#save').textContent='Saving…';
+      try{
+        const how=await savePage(u.username,data);
+        Object.assign(p,data);
+        toast(how==='saved'?'Page saved':'Saved for this session');
+        cache.delete('page:'+u.username);
+        mount(view());
+      }catch{ toast("Save failed — check the database rules"); $('#save').disabled=false; $('#save').textContent='Save page'; }
+    };
+  };
+  mount(view());
+}
+
+/* ----- tab: studios / followers / following / favourites ----- */
+async function tabStudios(u,el){
+  el.innerHTML=`<div class="skel" style="height:180px"></div>`;
+  try{
+    const s=await api(`/users/${u.username}/studios/curate?limit=40&offset=0`);
+    if(!s.length) return el.innerHTML=`<div class="empty"><b>No studios</b>@${esc(u.username)} doesn't curate any studios.</div>`;
+    el.innerHTML=`<div class="grid">${s.map(st=>`<article class="card">
+      <a class="thumb" href="https://scratch.mit.edu/studios/${st.id}" target="_blank" rel="noopener">
+        <img loading="lazy" src="${st.image}" alt=""></a>
+      <div class="body"><h3>${esc(st.title)}</h3>
+        <div class="date">${date(st.history?.created)}</div></div>
+      <div class="metrics"><span class="m looks" style="color:var(--looks)">👥 ${compact(st.stats?.followers)}</span>
+        <span class="m views">🧩 ${compact(st.stats?.includes||0)}</span></div>
+    </article>`).join('')}</div>`;
+  }catch{ el.innerHTML=`<div class="err">Couldn't load studios.</div>`; }
+}
+const peopleTab=(kind,label)=>async(u,el)=>{
+  el.innerHTML=`<div class="skel" style="height:150px"></div>`;
+  try{
+    const list=[]; let off=0;
+    while(off<200){
+      const page=await api(`/users/${u.username}/${kind}?limit=40&offset=${off}`);
+      if(!page.length) break; list.push(...page); off+=40; if(page.length<40) break;
+    }
+    if(!list.length) return el.innerHTML=`<div class="empty"><b>Nobody yet</b>@${esc(u.username)} has no ${label}.</div>`;
+    el.innerHTML=`<p class="mono" style="color:var(--muted2);font-size:13px">${list.length}${off>=200?'+':''} ${label}</p>
+      <div class="people">${list.map(personCard).join('')}</div>`;
+  }catch{ el.innerHTML=`<div class="err">Couldn't load ${label}.</div>`; }
+};
+const tabFollowers=peopleTab('followers','followers');
+const tabFollowing=peopleTab('following','following');
+async function tabFavorites(u,el){
+  el.innerHTML=`<div class="skel" style="height:200px"></div>`;
+  try{
+    const f=await api(`/users/${u.username}/favorites?limit=40&offset=0`);
+    if(!f.length) return el.innerHTML=`<div class="empty"><b>No favourites</b>@${esc(u.username)} hasn't favourited anything.</div>`;
+    el.innerHTML=`<div class="grid">${f.map(p=>projectCard(p)).join('')}</div>`;
+  }catch{ el.innerHTML=`<div class="err">Couldn't load favourites.</div>`; }
+}
+
+/* ----- project view ----- */
+async function viewProject(id){
+  app.innerHTML=`<div class="wrap"><div class="skel" style="margin:28px 0;height:420px"></div></div>`;
+  let p;
+  try{ p=await api(`/projects/${id}`); }
+  catch{
+    app.innerHTML=`<div class="wrap"><div class="empty" style="margin:60px 0"><b>Project ${esc(id)} isn't available</b>
+      It might be unshared, deleted, or the ID is wrong.</div></div>`; return;
+  }
+  const st=p.stats||{};
+  app.innerHTML=`<div class="wrap" style="padding-top:24px;padding-bottom:60px">
+    <div class="sheet">
+      <div class="top">
+        <div style="flex:1">
+          <h2>${esc(p.title)}</h2>
+          <div style="color:var(--muted);font-size:14px">by <a href="#/u/${esc(p.author?.username)}" style="color:var(--events)">@${esc(p.author?.username)}</a>
+            · shared ${date(p.history?.shared)} · <span class="mono">#${p.id}</span></div>
+        </div>
+        <a class="btn sm" href="https://scratch.mit.edu/projects/${p.id}" target="_blank" rel="noopener">Scratch ↗</a>
+        <a class="btn sm" href="https://turbowarp.org/${p.id}" target="_blank" rel="noopener">TurboWarp ↗</a>
+      </div>
+      <div class="stage">
+        <div class="stageframe">
+          <div class="stagebar">
+            <span class="dot" style="background:var(--operators)"></span>
+            <span class="dot" style="background:var(--myblocks)"></span>
+            <span class="name">480 × 360 · running on TurboWarp</span>
+          </div>
+          <iframe id="frame" src="https://turbowarp.org/${p.id}/embed?addons=pause"
+            allow="autoplay; fullscreen" allowfullscreen loading="lazy" title="${esc(p.title)}"></iframe>
+        </div>
+      </div>
+      <div class="pbody">
+        <div class="statgrid">
+          ${statBlock('Views',num(st.views),'var(--motion)')}
+          ${statBlock('Loves',num(st.loves),'var(--sound)')}
+          ${statBlock('Favourites',num(st.favorites),'var(--events)')}
+          ${statBlock('Remixes',num(st.remixes),'var(--operators)')}
+        </div>
+        ${p.remix?.parent?`<div class="stack" style="border-left:5px solid var(--operators)">
+          ⤳ Remix of <a href="#/p/${p.remix.parent}" style="color:var(--operators);font-weight:600">project #${p.remix.parent}</a></div>`:''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="cmp">
+          <div class="panel" style="margin:0"><div class="pdesc"><h4>Instructions</h4>${rich(p.instructions||'None given.')}</div></div>
+          <div class="panel" style="margin:0"><div class="pdesc"><h4>Notes and credits</h4>${rich(p.description||'None given.')}</div></div>
+        </div>
+        <div class="panel" style="margin:0"><h3>Comments</h3><div id="cmts" class="mono" style="color:var(--muted2);font-size:13px">loading…</div></div>
+      </div>
+    </div>
+    <div class="sechead"><h2>More from @${esc(p.author?.username)}</h2><span class="rule"></span></div>
+    <div class="grid" id="more">${'<div class="skel" style="height:250px"></div>'.repeat(4)}</div>
+  </div>`;
+
+  api(`/users/${p.author?.username}/projects/${p.id}/comments?limit=15`).then(cs=>{
+    $('#cmts').innerHTML = cs.length? cs.map(c=>`<div class="comment">
+      <img src="${c.author?.image||''}" alt="" onerror="this.style.opacity=.2">
+      <div><a class="cn" href="#/u/${esc(c.author?.username)}">${esc(c.author?.username)}</a>
+        <span style="color:var(--muted2);font-size:11.5px;margin-left:6px">${ago(c.datetime_created)}</span>
+        <div class="ct">${rich(String(c.content||'').replace(/<[^>]+>/g,''))}</div></div></div>`).join('')
+      : 'No comments yet.';
+  }).catch(()=>{ $('#cmts').textContent='Comments are unavailable for this project.'; });
+
+  api(`/users/${p.author?.username}/projects?limit=8`).then(ps=>{
+    $('#more').innerHTML=ps.filter(x=>x.id!=p.id).slice(0,4).map(x=>projectCard(x,{showAuthor:false})).join('')
+      ||`<div class="empty" style="grid-column:1/-1">Nothing else shared yet.</div>`;
+  }).catch(()=>$('#more').innerHTML='');
+}
+
+/* ----- compare ----- */
+async function viewCompare(a,b){
+  app.innerHTML=`<div class="wrap" style="padding:34px 0 60px">
+    <div class="sechead" style="margin-top:0"><h2>Compare two Scratchers</h2><span class="rule"></span></div>
+    <div class="toolbar">
+      <div class="slot"><input id="ca" placeholder="first username" value="${esc(a||'')}"></div>
+      <div class="slot"><input id="cb" placeholder="second username" value="${esc(b||'')}"></div>
+      <button class="btn primary" id="cgo">Compare</button>
+    </div>
+    <div id="cout"></div></div>`;
+  const go=()=>{ const x=$('#ca').value.trim().replace(/^@/,''), y=$('#cb').value.trim().replace(/^@/,'');
+    if(x&&y) location.hash=`#/compare/${x}/${y}`; };
+  $('#cgo').onclick=go;
+  ['ca','cb'].forEach(i=>$('#'+i).onkeydown=e=>{ if(e.key==='Enter') go(); });
+  if(!a||!b){ $('#cout').innerHTML=`<div class="empty"><b>Pick two Scratchers</b>Totals, averages and reach, side by side.</div>`; return; }
+
+  $('#cout').innerHTML=`<div class="skel" style="height:280px"></div>`;
+  try{
+    const [ua,ub]=await Promise.all([api(`/users/${a}`),api(`/users/${b}`)]);
+    const [pa,pb]=await Promise.all([loadAllProjects(ua.username),loadAllProjects(ub.username)]);
+    const ta=totals(pa), tb=totals(pb);
+    const rows=[['Projects',pa.length,pb.length],['Views',ta.views,tb.views],['Loves',ta.loves,tb.loves],
+      ['Favourites',ta.favorites,tb.favorites],['Remixes',ta.remixes,tb.remixes],
+      ['Avg views',Math.round(ta.views/(pa.length||1)),Math.round(tb.views/(pb.length||1))],
+      ['Avg loves',Math.round(ta.loves/(pa.length||1)),Math.round(tb.loves/(pb.length||1))]];
+    const head=(u,c)=>`<a href="#/u/${esc(u.username)}" class="panel" style="margin:0;text-align:center;display:block">
+      <img src="${face(u.id)}" style="width:64px;height:64px;border-radius:16px"><div style="font-family:var(--display);font-weight:600;font-size:19px;margin-top:8px;color:${c}">${esc(u.username)}</div>
+      <div style="font-size:12.5px;color:var(--muted2)">joined ${date(u.history?.joined)}</div></a>`;
+    $('#cout').innerHTML=`<div class="cmp" style="margin-bottom:10px">${head(ua,'var(--motion)')}${head(ub,'var(--sound)')}</div>
+      <div class="panel">${rows.map(([k,x,y])=>{
+        const m=Math.max(x,y,1);
+        return `<div class="cmpbar">
+          <div style="display:flex;align-items:center;gap:8px"><span class="num" style="margin-left:auto;color:${x>=y?'var(--motion)':'var(--muted)'}">${num(x)}</span>
+            <div class="track l" style="width:100%;max-width:220px"><i style="width:${x/m*100}%;background:var(--motion)"></i></div></div>
+          <div class="k">${k}</div>
+          <div style="display:flex;align-items:center;gap:8px"><div class="track" style="width:100%;max-width:220px"><i style="width:${y/m*100}%;background:var(--sound)"></i></div>
+            <span class="num" style="color:${y>=x?'var(--sound)':'var(--muted)'}">${num(y)}</span></div>
+        </div>`;}).join('')}</div>`;
+  }catch{ $('#cout').innerHTML=`<div class="err">One of those usernames didn't resolve.</div>`; }
+}
+
+/* ============================================================
+   ROUTER
+   ============================================================ */
+function route(){
+  const h=(location.hash||'#/').slice(2);
+  const parts=h.split('/').filter(Boolean).map(decodeURIComponent);
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#/'+(parts[0]||'')));
+  window.scrollTo(0,0);
+  if(!parts.length) return viewHome();
+  if(parts[0]==='u') return viewUser(parts[1],parts[2]);
+  if(parts[0]==='p') return viewProject(parts[1]);
+  if(parts[0]==='compare') return viewCompare(parts[1],parts[2]);
+  viewHome();
+}
+window.addEventListener('hashchange',route);
+(async()=>{ renderAuth(); await finishSignIn(); renderAuth(); route(); })();
+</script>
+</body>
+</html>
