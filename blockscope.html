@@ -325,10 +325,24 @@ const face  = id => `https://cdn2.scratch.mit.edu/get_image/user/${id}_90x90.png
 const AUTH='https://auth.itinerary.eu.org';
 const session = { user: store.get('bs_user') || null };
 
+/* Scratch Auth sends the whole tab away and brings it back with ?privateCode=…
+   That needs a real http(s) page we control. A sandboxed preview iframe or a
+   file:// copy can't come back, so say so instead of doing nothing. */
+function authBlockedReason(){
+  if(!/^https?:$/.test(location.protocol))
+    return 'Sign-in needs the page served over http(s). Open it on your site instead of from a local file.';
+  try{ if(window.top!==window.self) return 'Sign-in needs its own tab. Open this page directly (not in a preview frame) and try again.'; }
+  catch{ return 'Sign-in needs its own tab. Open this page directly and try again.'; }
+  return null;
+}
 function signIn(){
+  const reason=authBlockedReason();
+  if(reason) return toast(reason);
   const back = location.origin + location.pathname; // Scratch Auth appends ?privateCode=...
   store.set('bs_return', location.hash || '#/');
-  location.href = `${AUTH}/auth/?redirect=${btoa(back)}&name=${encodeURIComponent(CONFIG.appName)}`;
+  // base64 can contain + / = — encode it or the server sees a mangled URL
+  const redirect = encodeURIComponent(btoa(back));
+  location.href = `${AUTH}/auth/?redirect=${redirect}&name=${encodeURIComponent(CONFIG.appName)}`;
 }
 function signOut(){
   session.user=null; store.del('bs_user'); renderAuth(); route();
@@ -339,20 +353,22 @@ async function finishSignIn(){
   const code=q.get('privateCode');
   if(!code) return;
   history.replaceState(null,'',location.pathname); // clean the URL right away
+  toast('Checking your Scratch login…');
   try{
     const vUrl=`${AUTH}/api/auth/verifyToken?privateCode=${encodeURIComponent(code)}`;
     let data;
     try{ data=await (await fetch(vUrl)).json(); }
     catch{ data=await (await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(vUrl))).json(); }
-    // Check the redirect Scratch Auth recorded actually points at us, so another
-    // site can't hand us a code it collected on its own login page.
-    const home=location.origin+location.pathname;
-    if(!data.valid) return toast("Sign-in didn't complete — try again");
-    if(data.redirect && data.redirect.replace(/\/$/,'') !== home.replace(/\/$/,'')) return toast('Sign-in blocked: redirect mismatch');
+    if(!data || !data.valid) return toast("Scratch Auth says that login didn't complete. Try signing in again.");
+    // The redirect Scratch Auth recorded must point back at us, so another site
+    // can't hand us a code it collected on its own login page.
+    const home=(location.origin+location.pathname).replace(/\/$/,'');
+    if(data.redirect && data.redirect.replace(/\/$/,'') !== home)
+      return toast('Sign-in blocked: that code was issued for a different site.');
     session.user=data.username; store.set('bs_user',data.username);
     location.hash = store.get('bs_return') || ('#/u/'+data.username);
     toast('Signed in as '+data.username);
-  }catch(e){ toast('Scratch Auth is unreachable right now'); }
+  }catch(e){ toast('Scratch Auth is unreachable right now — try again in a minute.'); }
 }
 const isMe = u => !!session.user && session.user.toLowerCase()===String(u).toLowerCase();
 
@@ -469,8 +485,8 @@ function viewHome(){
 
   const go=()=>{
     const v=$('#q').value.trim(); if(!v) return;
-    const m=v.match(/projects\/(\d+)/)||v.match(/^(\d{5,})$/);
-    location.hash = m ? `#/p/${m[1]}` : `#/u/${v.replace(/^@/,'').replace(/\/$/,'').split('/').pop()}`;
+    const m=v.match(/projects\/(\d+)/)||v.match(/^#?(\d{5,})$/);
+    location.hash = m ? `#/p/${m[1]}` : `#/u/${clean(v.replace(/\/+$/,'').split('/').pop())}`;
   };
   $('#go').onclick=go;
   $('#q').onkeydown=e=>{ if(e.key==='Enter') go(); };
@@ -815,7 +831,7 @@ async function viewCompare(a,b){
       <button class="btn primary" id="cgo">Compare</button>
     </div>
     <div id="cout"></div></div>`;
-  const go=()=>{ const x=$('#ca').value.trim().replace(/^@/,''), y=$('#cb').value.trim().replace(/^@/,'');
+  const go=()=>{ const x=clean($('#ca').value), y=clean($('#cb').value);
     if(x&&y) location.hash=`#/compare/${x}/${y}`; };
   $('#cgo').onclick=go;
   ['ca','cb'].forEach(i=>$('#'+i).onkeydown=e=>{ if(e.key==='Enter') go(); });
@@ -849,9 +865,16 @@ async function viewCompare(a,b){
 /* ============================================================
    ROUTER
    ============================================================ */
+// @ is a Scratch mention prefix, never part of the username itself — strip it
+// wherever a name can arrive: typed, pasted, or linked out of someone's bio.
+const clean = n => String(n||'').trim().replace(/^@+/,'').replace(/[^\w-]+$/,'');
+
 function route(){
   const h=(location.hash||'#/').slice(2);
   const parts=h.split('/').filter(Boolean).map(decodeURIComponent);
+  if((parts[0]==='u'||parts[0]==='compare') && parts.slice(1).some(p=>p!==clean(p))){
+    return location.replace('#/'+parts[0]+'/'+parts.slice(1).map(clean).filter(Boolean).join('/'));
+  }
   document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#/'+(parts[0]||'')));
   window.scrollTo(0,0);
   if(!parts.length) return viewHome();
