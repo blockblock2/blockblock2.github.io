@@ -830,6 +830,7 @@ function refreshMarkers(){
 function makePopup(inv,flashed){
   const sl={ok:'Active ✅',destroyed:'Destroyed ❌',damaged:'Damaged ⚠️',hidden:'Hidden 🙈'};
   const igTag = inv.id;
+  const mapsUrl = `https://maps.apple.com/?daddr=${inv.lat},${inv.lng}&dirflg=w`;
   return `<div>
     <div class="popup-id">${inv.id}</div>
     <div class="popup-status">${inv.cityName} · ${sl[inv.status]||inv.status} · ${inv.points}pts</div>
@@ -837,6 +838,10 @@ function makePopup(inv,flashed){
     <button class="popup-btn ${flashed?'flashed':''}" onclick="toggleFlash('${inv.id}',this)">
       ${flashed?'✓ Flashed':'👾 Mark as flashed'}
     </button>
+    <a href="${mapsUrl}" target="_blank"
+       style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;background:#2563eb;border-radius:6px;color:#fff;font-size:0.75rem;padding:6px 10px;text-decoration:none;font-family:'Inter',sans-serif;font-weight:600">
+      🗺️ Open in Maps
+    </a>
     <a href="https://www.instagram.com/explore/tags/${igTag}/" target="_blank" 
        style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:6px;color:#fff;font-size:0.75rem;padding:6px 10px;text-decoration:none;font-family:'Inter',sans-serif;font-weight:600">
       📷 See on Instagram
