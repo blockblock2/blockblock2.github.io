@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashy 👾</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --bg:#0d0d0f; --surface:#16161a; --surface2:#1e1e24; --border:#2a2a35;
+  --accent:#7c3aed; --accent2:#a855f7; --green:#22c55e; --red:#ef4444;
+  --yellow:#f59e0b; --text:#e8e8f0; --muted:#6b6b80;
+  --term-bg:#0a0a0c; --term-green:#4ade80; --term-cyan:#22d3ee; --term-dim:#4b4b5a;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; display:flex; flex-direction:column; }
+
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 18px; background:var(--surface); border-bottom:1px solid var(--border);
+  position:sticky; top:0; z-index:1000;
+}
+.logo { display:flex; align-items:center; gap:10px; font-family:'Space Mono',monospace; font-weight:700; font-size:1.1rem; }
+.logo-pixel { display:grid; grid-template-columns:repeat(5,5px); grid-template-rows:repeat(5,5px); gap:1px; }
+.logo-pixel span { border-radius:1px; background:var(--accent2); }
+.logo-pixel span.off { background:transparent; }
+
+.uid-badge {
+  display:flex; align-items:center; gap:8px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:20px; padding:5px 12px; font-size:0.78rem;
+}
+.uid-badge .dot { width:7px; height:7px; border-radius:50%; background:var(--green); flex-shrink:0; }
+.uid-badge .dot.off { background:var(--muted); }
+.uid-badge span { color:var(--muted); font-family:'Space Mono',monospace; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.uid-badge button { background:none; border:none; color:var(--accent2); font-size:0.75rem; cursor:pointer; padding:0; font-family:'Inter',sans-serif; }
+
+.tabs { display:flex; border-bottom:1px solid var(--border); background:var(--surface); padding:0 18px; }
+.tab { padding:11px 18px; font-size:0.83rem; font-weight:600; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; transition:all .15s; user-select:none; }
+.tab.active { color:var(--accent2); border-bottom-color:var(--accent2); }
+.tab:hover:not(.active) { color:var(--text); }
+
+.panel { display:none; flex:1; flex-direction:column; }
+.panel.active { display:flex; }
+
+/* MAP */
+#map-panel { position:relative; }
+#map { height:calc(100vh - 108px); }
+
+.map-controls {
+  position:absolute; top:12px; right:12px; z-index:800;
+  display:flex; flex-direction:column; gap:8px; max-width:220px;
+}
+.map-controls.collapsed .map-card:not(.controls-toggle) { display:none; }
+.controls-toggle {
+  background:rgba(22,22,26,0.93); border:1px solid var(--border);
+  border-radius:10px; padding:8px 12px; backdrop-filter:blur(8px);
+  display:flex; align-items:center; gap:8px; cursor:pointer;
+  font-size:0.78rem; font-weight:600; user-select:none;
+  transition:background .15s;
+}
+.controls-toggle:hover { background:rgba(30,30,36,0.95); }
+.controls-toggle .arrow {
+  margin-left:auto; font-size:0.7rem; color:var(--muted);
+  transition:transform .2s;
+}
+.map-controls.collapsed .controls-toggle .arrow { transform:rotate(-90deg); }
+.map-controls.collapsed .controls-toggle .label-full { display:none; }
+.map-controls:not(.collapsed) .controls-toggle .label-mini { display:none; }
+.map-card {
+  background:rgba(22,22,26,0.93); border:1px solid var(--border);
+  border-radius:10px; padding:11px 13px; backdrop-filter:blur(8px);
+  font-size:0.8rem;
+}
+.map-card label { display:flex; align-items:center; gap:7px; cursor:pointer; margin-bottom:4px; }
+.map-card label:last-child { margin-bottom:0; }
+.city-select {
+  width:100%; background:var(--surface2); border:1px solid var(--border);
+  border-radius:6px; color:var(--text); font-size:0.8rem; padding:6px 8px; margin-top:6px;
+}
+.legend-row { display:flex; align-items:center; gap:6px; color:var(--muted); margin-bottom:3px; }
+.legend-row:last-child { margin-bottom:0; }
+.ldot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+/* SETUP */
+#setup-panel { padding:28px 22px; max-width:680px; margin:0 auto; width:100%; overflow-y:auto; gap:0; }
+.setup-header { margin-bottom:22px; }
+.setup-header h2 { font-family:'Space Mono',monospace; font-size:1.25rem; font-weight:700; margin-bottom:5px; }
+.setup-header p { color:var(--muted); font-size:0.87rem; line-height:1.55; }
+.step-label { font-size:0.7rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent2); margin-bottom:4px; }
+
+.progress-bar { display:flex; gap:5px; margin-bottom:24px; }
+.progress-seg { height:3px; border-radius:2px; flex:1; background:var(--border); transition:background .3s; }
+.progress-seg.done { background:var(--accent2); }
+
+.step { display:none; flex-direction:column; gap:14px; }
+.step.active { display:flex; }
+.step h3 { font-family:'Space Mono',monospace; font-size:0.95rem; }
+.step p { color:var(--muted); font-size:0.86rem; line-height:1.6; }
+
+.terminal { background:var(--term-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; font-family:'Space Mono',monospace; font-size:0.8rem; }
+.term-bar { background:#1a1a20; padding:7px 13px; display:flex; align-items:center; gap:5px; border-bottom:1px solid var(--border); }
+.term-dot { width:9px; height:9px; border-radius:50%; }
+.term-title { flex:1; text-align:center; font-size:0.7rem; color:var(--term-dim); }
+.term-body { padding:14px; display:flex; flex-direction:column; gap:8px; }
+.term-line { display:flex; align-items:flex-start; }
+.term-prompt { color:var(--term-green); margin-right:8px; flex-shrink:0; }
+.term-cmd { color:var(--text); flex:1; word-break:break-all; }
+.term-comment { color:var(--term-dim); }
+.term-output { color:var(--term-cyan); opacity:.85; }
+.term-highlight { background:rgba(124,58,237,.25); border:1px solid var(--accent); border-radius:4px; padding:1px 5px; color:var(--accent2); }
+
+.copy-row {
+  display:flex; align-items:center; gap:8px;
+  background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:9px 12px;
+}
+.copy-row code { flex:1; font-family:'Space Mono',monospace; font-size:0.78rem; color:var(--term-cyan); word-break:break-all; }
+.copy-btn {
+  background:var(--surface); border:1px solid var(--border); border-radius:6px;
+  color:var(--muted); font-size:0.7rem; padding:4px 9px; cursor:pointer;
+  font-family:'Space Mono',monospace; transition:all .15s; white-space:nowrap;
+}
+.copy-btn:hover { color:var(--text); border-color:var(--accent); }
+.copy-btn.copied { color:var(--green); border-color:var(--green); }
+
+.info-box { background:rgba(124,58,237,.08); border:1px solid rgba(124,58,237,.3); border-radius:8px; padding:11px 13px; font-size:0.83rem; line-height:1.6; }
+.info-box.warn { background:rgba(245,158,11,.08); border-color:rgba(245,158,11,.3); }
+.info-box.ok { background:rgba(34,197,94,.08); border-color:rgba(34,197,94,.3); }
+
+.uid-input-row { display:flex; gap:8px; }
+#uid-input {
+  flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+  color:var(--text); font-family:'Space Mono',monospace; font-size:0.85rem;
+  padding:10px 13px; outline:none; transition:border-color .15s;
+}
+#uid-input:focus { border-color:var(--accent); }
+#uid-input::placeholder { color:var(--term-dim); }
+
+.btn { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 17px; font-family:'Inter',sans-serif; font-size:0.84rem; font-weight:600; cursor:pointer; transition:background .15s; }
+.btn:hover { background:var(--accent2); }
+.btn-ghost { background:transparent; border:1px solid var(--border); color:var(--text); }
+.btn-ghost:hover { background:var(--surface2); }
+.btn-green { background:#15803d; }
+.btn-green:hover { background:var(--green); }
+.step-nav { display:flex; gap:10px; }
+
+.phone-step { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; align-items:flex-start; gap:12px; }
+.phone-step .icon { font-size:1.4rem; flex-shrink:0; margin-top:2px; }
+.phone-step .text { font-size:0.83rem; line-height:1.6; }
+.phone-step .text strong { color:var(--text); }
+.phone-step .text code { color:var(--term-cyan); font-family:'Space Mono',monospace; font-size:0.78rem; }
+
+/* STATS */
+#stats-panel { padding:28px 22px; max-width:680px; margin:0 auto; width:100%; overflow-y:auto; gap:18px; }
+.stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; }
+.stat-num { font-family:'Space Mono',monospace; font-size:1.9rem; font-weight:700; color:var(--accent2); display:block; }
+.stat-lbl { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:3px; }
+.city-list { display:flex; flex-direction:column; gap:7px; }
+.city-row { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:11px 14px; display:flex; align-items:center; gap:10px; }
+.city-flag { font-size:1.1rem; }
+.city-name { flex:1; font-size:0.87rem; font-weight:500; }
+.city-bar-wrap { width:70px; height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+.city-bar { height:100%; background:var(--accent2); border-radius:2px; transition:width .4s; }
+.city-count { font-family:'Space Mono',monospace; font-size:0.75rem; color:var(--muted); min-width:45px; text-align:right; }
+
+/* leaflet clusters */
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+  background: rgba(124,58,237,0.35) !important;
+}
+.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+  background: rgba(168,85,247,0.9) !important;
+  color: #fff !important;
+  font-family: 'Space Mono', monospace !important;
+  font-weight: 700 !important;
+  border: 2px solid rgba(255,255,255,0.15) !important;
+}
+
+/* leaflet */
+.leaflet-popup-content-wrapper { background:var(--surface) !important; border:1px solid var(--border) !important; border-radius:10px !important; box-shadow:0 4px 20px rgba(0,0,0,.5) !important; color:var(--text) !important; }
+.leaflet-popup-tip { background:var(--surface) !important; }
+.leaflet-popup-content { margin:11px 13px !important; }
+.popup-id { font-family:'Space Mono',monospace; font-size:0.85rem; font-weight:700; color:var(--accent2); margin-bottom:3px; }
+.popup-status { font-size:0.73rem; color:var(--muted); margin-bottom:9px; }
+.popup-btn { background:var(--accent); border:none; border-radius:6px; color:#fff; font-size:0.77rem; padding:6px 11px; cursor:pointer; font-family:'Inter',sans-serif; font-weight:600; width:100%; }
+.popup-btn.flashed { background:var(--surface2); border:1px solid var(--border); color:var(--muted); }
+
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-pixel" id="logo-pixel"></div>
+    Flashy
+  </div>
+  <div class="uid-badge" id="uid-badge">
+    <div class="dot off" id="uid-dot"></div>
+    <span id="uid-label">No account</span>
+    <button onclick="switchTab('setup')" id="uid-action">Connect →</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('map')">👾 Map</div>
+  <div class="tab" onclick="switchTab('setup')">⚙️ Setup</div>
+  <div class="tab" onclick="switchTab('stats')">📊 Stats</div>
+</div>
+
+<!-- MAP -->
+<div class="panel active" id="map-panel">
+  <div id="map"></div>
+  <div class="map-controls" id="map-controls">
+    <div class="controls-toggle map-card" onclick="toggleControls()">
+      <span>👾</span>
+      <span class="label-full">Controls</span>
+      <span class="label-mini">Show</span>
+      <span class="arrow">▼</span>
+    </div>
+    <div class="map-card">
+      <select class="city-select" id="city-select" onchange="flyToCity(this.value)">
+        <option value="">— Jump to city —</option>
+        <optgroup label="🔥 Most invaders">
+          <option value="paris">🇫🇷 Paris (1500+)</option>
+          <option value="losangeles">🇺🇸 Los Angeles (214)</option>
+          <option value="newyork">🇺🇸 New York (192)</option>
+          <option value="london">🇬🇧 London (162)</option>
+          <option value="hongkong">🇭🇰 Hong Kong (129)</option>
+          <option value="tokyo">🇯🇵 Tokyo (123)</option>
+        </optgroup>
+        <optgroup label="Europe">
+          <option value="aixenprovence">🇫🇷 Aix-en-Provence</option>
+          <option value="amiens">🇫🇷 Amiens</option>
+          <option value="amsterdam">🇳🇱 Amsterdam</option>
+          <option value="antwerp">🇧🇪 Antwerp</option>
+          <option value="avignon">🇫🇷 Avignon</option>
+          <option value="barcelona">🇪🇸 Barcelona</option>
+          <option value="basel">🇨🇭 Basel</option>
+          <option value="bastia">🇫🇷 Bastia</option>
+          <option value="berlin">🇩🇪 Berlin</option>
+          <option value="bern">🇨🇭 Bern</option>
+          <option value="biarritz">🇫🇷 Biarritz-Anglet-Bayonne</option>
+          <option value="bilbao">🇪🇸 Bilbao</option>
+          <option value="brussels">🇧🇪 Brussels</option>
+          <option value="capferret">🇫🇷 Cap Ferret</option>
+          <option value="charleroi">🇧🇪 Charleroi</option>
+          <option value="clermontferrand">🇫🇷 Clermont-Ferrand</option>
+          <option value="cologne">🇩🇪 Cologne</option>
+          <option value="contis">🇫🇷 Contis-Les-Bains</option>
+          <option value="cotedazur">🇫🇷 Côte d'Azur</option>
+          <option value="dijon">🇫🇷 Dijon</option>
+          <option value="fontainebleau">🇫🇷 Fontainebleau</option>
+          <option value="forcalquier">🇫🇷 Forcalquier</option>
+          <option value="frankfurt">🇩🇪 Frankfurt</option>
+          <option value="geneva">🇨🇭 Geneva</option>
+          <option value="grenoble">🇫🇷 Grenoble</option>
+          <option value="grude">🇧🇦 Grude</option>
+          <option value="halmstad">🇸🇪 Halmstad</option>
+          <option value="istanbul">🇹🇷 Istanbul</option>
+          <option value="laciotat">🇫🇷 La Ciotat</option>
+          <option value="lausanne">🇨🇭 Lausanne</option>
+          <option value="lille">🇫🇷 Lille</option>
+          <option value="ljubljana">🇸🇮 Ljubljana</option>
+          <option value="luberon">🇫🇷 Luberon</option>
+          <option value="lyon">🇫🇷 Lyon</option>
+          <option value="malaga">🇪🇸 Málaga</option>
+          <option value="manchester">🇬🇧 Manchester</option>
+          <option value="marseille">🇫🇷 Marseille</option>
+          <option value="menorca">🇪🇸 Menorca</option>
+          <option value="montauban">🇫🇷 Montauban</option>
+          <option value="montpellier">🇫🇷 Montpellier</option>
+          <option value="munich">🇩🇪 Munich</option>
+          <option value="nantes">🇫🇷 Nantes</option>
+          <option value="newcastle">🇬🇧 Newcastle</option>
+          <option value="nimes">🇫🇷 Nîmes</option>
+          <option value="noordwijk">🇳🇱 Noordwijk</option>
+          <option value="orleans">🇫🇷 Orléans</option>
+          <option value="pau">🇫🇷 Pau</option>
+          <option value="perpignan">🇫🇷 Perpignan</option>
+          <option value="rabat">🇲🇦 Rabat</option>
+          <option value="ravenna">🇮🇹 Ravenna</option>
+          <option value="redu">🇧🇪 Redu</option>
+          <option value="rennes">🇫🇷 Rennes</option>
+          <option value="reunion">🇫🇷 Réunion</option>
+          <option value="rome">🇮🇹 Rome</option>
+          <option value="rotterdam">🇳🇱 Rotterdam</option>
+          <option value="toulouse">🇫🇷 Toulouse</option>
+          <option value="valmorel">🇫🇷 Valmorel</option>
+          <option value="versailles">🇫🇷 Versailles</option>
+          <option value="vienna">🇦🇹 Vienna</option>
+          <option value="visby">🇸🇪 Visby</option>
+        </optgroup>
+        <optgroup label="Americas">
+          <option value="cancun">🇲🇽 Cancun</option>
+          <option value="miami">🇺🇸 Miami</option>
+          <option value="sandiego">🇺🇸 San Diego</option>
+          <option value="saopaulo">🇧🇷 São Paulo</option>
+          <option value="potosi">🇧🇴 Potosi</option>
+        </optgroup>
+        <optgroup label="Asia / Pacific">
+          <option value="bangkok">🇹🇭 Bangkok</option>
+          <option value="daejeon">🇰🇷 Daejeon</option>
+          <option value="kathmandu">🇳🇵 Kathmandu</option>
+          <option value="melbourne">🇦🇺 Melbourne</option>
+          <option value="perth">🇦🇺 Perth</option>
+          <option value="seoul">🇰🇷 Seoul</option>
+          <option value="varanasi">🇮🇳 Varanasi</option>
+        </optgroup>
+        <optgroup label="Africa / Middle East">
+          <option value="djerba">🇹🇳 Djerba</option>
+          <option value="eilat">🇮🇱 Eilat</option>
+          <option value="faro">🇵🇹 Faro</option>
+          <option value="marrakesh">🇲🇦 Marrakesh</option>
+          <option value="mombasa">🇰🇪 Mombasa</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="map-card">
+      <label><input type="checkbox" id="hide-flashed" onchange="refreshMarkers()"> Hide flashed</label>
+      <label><input type="checkbox" id="hide-destroyed" onchange="refreshMarkers()"> Hide destroyed</label>
+    </div>
+    <div class="map-card">
+      <div class="legend-row"><div class="ldot" style="background:#a855f7"></div> Not flashed</div>
+      <div class="legend-row"><div class="ldot" style="background:#374151"></div> Flashed ✓</div>
+      <div class="legend-row"><div class="ldot" style="background:#ef4444"></div> Destroyed</div>
+      <div class="legend-row"><div class="ldot" style="background:#f59e0b"></div> Damaged</div>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div class="panel" id="setup-panel">
+  <div class="setup-header">
+    <div class="step-label">One-time setup</div>
+    <h2>Find your Flash Invaders UID</h2>
+    <p>Your UID lets Flashy load which mosaics you've already flashed. You only need to do this once — it's saved in your browser.</p>
+  </div>
+
+  <div class="progress-bar">
+    <div class="progress-seg" id="prog-0"></div>
+    <div class="progress-seg" id="prog-1"></div>
+    <div class="progress-seg" id="prog-2"></div>
+    <div class="progress-seg" id="prog-3"></div>
+    <div class="progress-seg" id="prog-4"></div>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="step active" id="step-0">
+    <div class="step-label">Step 1 of 5</div>
+    <h3>Install mitmproxy on your Mac</h3>
+    <p>Open <strong>Terminal</strong> on your Mac. If you don't have Homebrew, run the first command. Then install mitmproxy.</p>
+    <div class="copy-row">
+      <code>/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"</code>
+      <button class="copy-btn" onclick="copyCmd(this,'/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"')">copy</button>
+    </div>
+    <div class="copy-row">
+      <code>brew install mitmproxy</code>
+      <button class="copy-btn" onclick="copyCmd(this,'brew install mitmproxy')">copy</button>
+    </div>
+    <div class="info-box warn">⏱ Homebrew can take a few minutes. Run the second command once it's done.</div>
+    <div class="step-nav">
+      <button class="btn" onclick="goStep(1)">Done →</button>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step" id="step-1">
+    <div class="step-label">Step 2 of 5</div>
+    <h3>Start the proxy</h3>
+    <p>Run this in Terminal. It starts listening on port 8080 and opens a web interface.</p>
+    <div class="copy-row">
+      <code>mitmweb</code>
+      <button class="copy-btn" onclick="copyCmd(this,'mitmweb')">copy</button>
+    </div>
+    <div class="terminal">
+      <div class="term-bar">
+        <div class="term-dot" style="background:#ef4444"></div>
+        <div class="term-dot" style="background:#f59e0b"></div>
+        <div class="term-dot" style="background:#22c55e"></div>
+        <div class="term-title">Terminal — mitmweb</div>
+      </div>
+      <div class="term-body">
+        <div class="term-line"><span class="term-prompt">$</span><span class="term-cmd">mitmweb</span></div>
+        <div class="term-line"><span class="term-output">Web server listening at http://127.0.0.1:8081/</span></div>
+        <div class="term-line"><span class="term-output">Proxy server listening at http://*:8080</span></div>
+      </div>
+    </div>
+    <p>A browser tab may open at <code style="color:var(--term-cyan);font-family:'Space Mono',monospace">127.0.0.1:8081</code> — leave it open, you'll need it soon.</p>
+    <div class="step-nav">
+      <button class="btn btn-ghost" onclick="goStep(0)">← Back</button>
+      <button class="btn" onclick="goStep(2)">Running →</button>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step" id="step-2">
+    <div class="step-label">Step 3 of 5</div>
+    <h3>Find your Mac's IP address</h3>
+    <p>Run this in a <em>new</em> Terminal tab (mitmweb is still running in the other one).</p>
+    <div class="copy-row">
+      <code>ipconfig getifaddr en0</code>
+      <button class="copy-btn" onclick="copyCmd(this,'ipconfig getifaddr en0')">copy</button>
+    </div>
+    <div class="terminal">
+      <div class="term-bar">
+        <div class="term-dot" style="background:#ef4444"></div>
+        <div class="term-dot" style="background:#f59e0b"></div>
+        <div class="term-dot" style="background:#22c55e"></div>
+        <div class="term-title">Terminal</div>
+      </div>
+      <div class="term-body">
+        <div class="term-line"><span class="term-prompt">$</span><span class="term-cmd">ipconfig getifaddr en0</span></div>
+        <div class="term-line"><span class="term-output">192.168.1.42 <span class="term-comment">← your Mac's IP, write this down</span></span></div>
+      </div>
+    </div>
+    <div class="step-nav">
+      <button class="btn btn-ghost" onclick="goStep(1)">← Back</button>
+      <button class="btn" onclick="goStep(3)">Got my IP →</button>
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="step" id="step-3">
+    <div class="step-label">Step 4 of 5</div>
+    <h3>Set your iPhone's proxy to your Mac</h3>
+    <p>Your iPhone and Mac must be on the same WiFi network.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="phone-step"><div class="icon">📶</div><div class="text"><strong>Settings → Wi-Fi</strong><br>Tap the <strong>ⓘ</strong> next to your network name</div></div>
+      <div class="phone-step"><div class="icon">🔧</div><div class="text">Scroll to <strong>HTTP Proxy → Configure Proxy</strong><br>Choose <strong>Manual</strong></div></div>
+      <div class="phone-step"><div class="icon">📝</div><div class="text">Server: <code>192.168.1.42</code> (your Mac's IP from step 3)<br>Port: <code>8080</code> — then tap Save</div></div>
+      <div class="phone-step"><div class="icon">🔐</div><div class="text">Open <strong>Safari</strong> on iPhone and go to <code>mitm.it</code><br>Tap <strong>Apple</strong>, install the certificate, then go to <strong>Settings → General → VPN & Device Management</strong> and trust it</div></div>
+    </div>
+    <div class="step-nav">
+      <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
+      <button class="btn" onclick="goStep(4)">Proxy is set →</button>
+    </div>
+  </div>
+
+  <!-- Step 5 -->
+  <div class="step" id="step-4">
+    <div class="step-label">Step 5 of 5</div>
+    <h3>Open Flash Invaders and grab your UID</h3>
+    <p>Open the <strong>Flash Invaders app</strong> on your iPhone and tap your profile. Then switch to the <code style="color:var(--term-cyan);font-family:'Space Mono',monospace">127.0.0.1:8081</code> tab on your Mac and look for a request to <code style="color:var(--term-cyan);font-family:'Space Mono',monospace">api.space-invaders.com</code>.</p>
+    <div class="terminal">
+      <div class="term-bar">
+        <div class="term-dot" style="background:#ef4444"></div>
+        <div class="term-dot" style="background:#f59e0b"></div>
+        <div class="term-dot" style="background:#22c55e"></div>
+        <div class="term-title">mitmweb — intercepted request</div>
+      </div>
+      <div class="term-body">
+        <div class="term-line"><span class="term-output">GET https://api.space-invaders.com/flashinvaders/users?uid=<span class="term-highlight">aBcDeFgHiJkLmNoPqRsT</span></span></div>
+      </div>
+    </div>
+    <p>Copy the string after <code style="color:var(--term-cyan);font-family:'Space Mono',monospace">uid=</code> and paste it below.</p>
+    <div class="uid-input-row">
+      <input type="text" id="uid-input" placeholder="Paste your UID here…"/>
+      <button class="btn btn-green" onclick="saveUID()">Save 💾</button>
+    </div>
+    <div id="uid-error" style="display:none" class="info-box warn"></div>
+    <div class="info-box warn">💡 After you're done, turn the iPhone proxy off: <strong>Settings → Wi-Fi → ⓘ → HTTP Proxy → Off</strong></div>
+    <div class="step-nav">
+      <button class="btn btn-ghost" onclick="goStep(3)">← Back</button>
+    </div>
+  </div>
+
+  <!-- Done -->
+  <div class="step" id="step-done">
+    <div class="info-box ok">✅ You're all set! Your flashed mosaics are now shown on the map.</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:14px">
+      <div style="font-size:2rem">👾</div>
+      <div style="flex:1">
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:2px">Connected UID</div>
+        <div style="font-family:'Space Mono',monospace;font-size:0.85rem;word-break:break-all" id="done-uid"></div>
+      </div>
+      <button class="btn btn-ghost" style="font-size:0.78rem;padding:6px 11px" onclick="disconnectUID()">Disconnect</button>
+    </div>
+    <p style="color:var(--muted);font-size:0.83rem">Saved in your browser. No account needed — it stays here until you clear your browser data.</p>
+    <button class="btn" onclick="switchTab('map')">Go to map →</button>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="panel" id="stats-panel">
+  <div class="setup-header">
+    <div class="step-label">My Stats</div>
+    <h2>Your Flash Invaders journey</h2>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><span class="stat-num" id="stat-flashed">—</span><div class="stat-lbl">Flashed</div></div>
+    <div class="stat-card"><span class="stat-num" id="stat-total">—</span><div class="stat-lbl">On map</div></div>
+    <div class="stat-card"><span class="stat-num" id="stat-pct">—</span><div class="stat-lbl">Complete</div></div>
+  </div>
+  <div>
+    <div class="step-label" style="margin-bottom:10px">By city</div>
+    <div class="city-list" id="city-breakdown"></div>
+  </div>
+  <div id="stats-no-uid" class="info-box" style="display:none">
+    Connect your Flash Invaders account in the <span style="color:var(--accent2);cursor:pointer;text-decoration:underline" onclick="switchTab('setup')">Setup tab</span> to see your stats.
+  </div>
+</div>
+
+<script>
+// ── PIXEL LOGO ──
+(function(){
+  const g=document.getElementById('logo-pixel');
+  [0,1,0,1,0, 1,1,1,1,1, 1,0,1,0,1, 1,1,1,1,1, 0,1,0,1,0].forEach(v=>{
+    const s=document.createElement('span');
+    if(!v)s.classList.add('off');
+    g.appendChild(s);
+  });
+})();
+
+// ── CITY COORDS [lat, lng, zoom] ──
+const CITIES = {
+  paris:[48.8538,2.3489,15], losangeles:[34.0855,-118.3375,12], newyork:[40.7282,-73.9904,13],
+  london:[51.5128,-0.1171,13], hongkong:[22.3017,114.1641,13], tokyo:[35.6681,139.7022,13],
+  aixenprovence:[43.5279,5.4479,13], amiens:[49.8943,2.2958,14], amsterdam:[52.3683,4.8919,13],
+  antwerp:[51.2198,4.4075,13], avignon:[43.9485,4.8081,13], barcelona:[41.3833,2.1729,13],
+  basel:[47.5591,7.5911,13], bastia:[42.7008,9.4508,13], berlin:[52.5129,13.3995,13],
+  bern:[46.9482,7.4522,13], biarritz:[43.476,-1.5354,13], bilbao:[43.2615,-2.9307,13],
+  brussels:[50.8407,4.3535,13], capferret:[44.6629,-1.2404,13], charleroi:[50.4054,4.4500,13],
+  clermontferrand:[45.8003,3.0901,13], cologne:[50.9283,6.9725,13], contis:[44.0925,-1.3230,13],
+  cotedazur:[43.4074,6.7550,13], dijon:[47.3233,5.0424,13], fontainebleau:[48.3962,2.6774,13],
+  forcalquier:[43.9594,5.7810,13], frankfurt:[49.8969,8.6178,13], geneva:[46.2041,6.1433,13],
+  grenoble:[45.1873,5.7258,13], grude:[43.3869,17.3804,13], halmstad:[56.6792,12.7739,13],
+  istanbul:[41.0218,28.9731,13], laciotat:[43.1850,5.6196,13], lausanne:[46.5209,6.6315,13],
+  lille:[50.5941,3.0465,13], ljubljana:[46.0521,14.5050,13], luberon:[43.8603,5.3555,13],
+  lyon:[45.7659,4.8324,13], malaga:[36.7200,-4.4135,13], manchester:[53.4802,-2.2395,13],
+  marseille:[43.2904,5.3810,13], menorca:[40.0123,3.8522,13], montauban:[44.0167,1.3519,13],
+  montpellier:[43.6110,3.8763,13], munich:[48.1385,11.5571,13], nantes:[47.2162,-1.5458,13],
+  newcastle:[54.9698,-1.6089,13], nimes:[43.8359,4.3616,13], noordwijk:[52.2182,4.4196,13],
+  orleans:[47.8936,1.9084,13], pau:[43.2985,-0.3698,13], perpignan:[42.6995,2.8940,13],
+  rabat:[34.0217,-6.8377,13], ravenna:[44.4213,12.1964,13], redu:[50.0030,5.1489,13],
+  rennes:[48.1108,-1.6794,13], reunion:[-20.9830,55.3480,13], rome:[41.8887,12.5085,13],
+  rotterdam:[51.9151,4.4768,13], toulouse:[43.6952,1.3531,13], valmorel:[45.4650,6.4503,13],
+  versailles:[48.8057,2.1281,13], vienna:[48.2079,16.3657,13], visby:[57.6389,18.2914,13],
+  cancun:[21.1636,-86.7655,13], miami:[25.7859,-80.1704,13], sandiego:[32.7155,-117.1620,13],
+  saopaulo:[-23.5509,-46.6618,13], potosi:[-19.5907,-65.7523,13],
+  bangkok:[13.7467,100.5314,13], daejeon:[36.3660,127.3817,13], kathmandu:[27.7082,85.3085,13],
+  melbourne:[-37.8149,144.9714,13], perth:[-31.9642,115.8297,13], seoul:[37.5365,126.9835,13],
+  varanasi:[25.3013,83.0079,13], djerba:[33.8077,10.8918,13], eilat:[29.5319,34.9397,13],
+  faro:[37.0181,-7.9569,13], marrakesh:[31.6335,-7.9452,11], mombasa:[-3.9772,39.7068,13]
+};
+
+// ── REAL DATASET ──
+// Data source: https://github.com/goguelnikov/SpaceInvaders (V5, 4,285 mosaics)
+const DATA_URL = 'https://raw.githubusercontent.com/goguelnikov/SpaceInvaders/main/world_space_invaders_V05.json';
+let INVADERS = [];
+
+// City-code to friendly name + flag mapping
+const CITY_NAMES = {
+  AIX:['Aix-en-Provence','🇫🇷'], AMI:['Amiens','🇫🇷'], AMS:['Amsterdam','🇳🇱'],
+  ANG:['Anglet','🇫🇷'], ANT:['Antwerp','🇧🇪'], ANZ:['Anzère','🇨🇭'],
+  AVI:['Avignon','🇫🇷'], BAB:['Biarritz-Anglet-Bayonne','🇫🇷'], BAY:['Bayonne','🇫🇷'],
+  BER:['Berlin','🇩🇪'], BGK:['Bangkok','🇹🇭'], BIA:['Biarritz','🇫🇷'],
+  BIL:['Bilbao','🇪🇸'], BRN:['Bern','🇨🇭'], BRU:['Brussels','🇧🇪'],
+  BSL:['Basel','🇨🇭'], BST:['Bastia','🇫🇷'], BT:['Butan','🇧🇹'],
+  CAN:['Cancun','🇲🇽'], CDF:['Clermont-Ferrand','🇫🇷'], CF:['Cap Ferret','🇫🇷'],
+  CHA:['Charleroi','🇧🇪'], CLI:['La Ciotat','🇫🇷'], CLT:['Contis-Les-Bains','🇫🇷'],
+  COL:['Cologne','🇩🇪'], CTZ:['Côte d\'Azur','🇫🇷'], DAE:['Daejeon','🇰🇷'],
+  DHK:['Dhaka','🇧🇩'], DIJ:['Dijon','🇫🇷'], DJE:['Djerba','🇹🇳'],
+  EIL:['Eilat','🇮🇱'], FAR:['Faro','🇵🇹'], FCA:['Forcalquier','🇫🇷'],
+  FR:['Frankfurt','🇩🇪'], FTBL:['Fontainebleau','🇫🇷'], GEN:['Geneva','🇨🇭'],
+  GRN:['Grenoble','🇫🇷'], GRU:['Grude','🇧🇦'], GRTI:['Grottaglie','🇮🇹'],
+  HAL:['Halmstad','🇸🇪'], HK:['Hong Kong','🇭🇰'], IST:['Istanbul','🇹🇷'],
+  KAT:['Kathmandu','🇳🇵'], LA:['Los Angeles','🇺🇸'], LDN:['London','🇬🇧'],
+  LIL:['Lille','🇫🇷'], LJU:['Ljubljana','🇸🇮'], LSN:['Lausanne','🇨🇭'],
+  LUB:['Luberon','🇫🇷'], LY:['Lyon','🇫🇷'], MAL:['Málaga','🇪🇸'],
+  MAN:['Manchester','🇬🇧'], MAR:['Marrakesh','🇲🇦'], MEL:['Melbourne','🇦🇺'],
+  MEN:['Menorca','🇪🇸'], MIA:['Miami','🇺🇸'], MOM:['Mombasa','🇰🇪'],
+  MRS:['Marseille','🇫🇷'], MTB:['Montauban','🇫🇷'], MTP:['Montpellier','🇫🇷'],
+  MUN:['Munich','🇩🇪'], NAN:['Nantes','🇫🇷'], NCT:['Newcastle','🇬🇧'],
+  NIM:['Nîmes','🇫🇷'], NOO:['Noordwijk','🇳🇱'], NY:['New York','🇺🇸'],
+  ORL:['Orléans','🇫🇷'], PA:['Paris','🇫🇷'], PAU:['Pau','🇫🇷'],
+  PER:['Perth','🇦🇺'], POTI:['Potosi','🇧🇴'], PRP:['Perpignan','🇫🇷'],
+  RAB:['Rabat','🇲🇦'], RAV:['Ravenna','🇮🇹'], RED:['Redu','🇧🇪'],
+  REN:['Rennes','🇫🇷'], RM:['Rome','🇮🇹'], ROT:['Rotterdam','🇳🇱'],
+  RUN:['Réunion','🇫🇷'], SD:['San Diego','🇺🇸'], SEO:['Seoul','🇰🇷'],
+  SL:['Sri Lanka','🇱🇰'], SP:['São Paulo','🇧🇷'], Space:['Space','🚀'],
+  TK:['Tokyo','🇯🇵'], TLS:['Toulouse','🇫🇷'], VAL:['Valmorel','🇫🇷'],
+  VAR:['Varanasi','🇮🇳'], VER:['Versailles','🇫🇷'], VIE:['Vienna','🇦🇹'],
+  VIS:['Visby','🇸🇪'], WN:['Warsaw','🇵🇱']
+};
+
+function cityName(code){ return (CITY_NAMES[code]||[code,'🌍'])[0]; }
+function cityFlag(code){ return (CITY_NAMES[code]||[code,'🌍'])[1]; }
+
+function normStatus(s){
+  s = (s||'').toLowerCase();
+  if(s.includes('destroyed')) return 'destroyed';
+  if(s.includes('damaged')) return 'damaged';
+  if(s.includes('hidden')) return 'hidden';
+  return 'ok';
+}
+
+async function loadInvaders(){
+  try {
+    const res = await fetch(DATA_URL);
+    const raw = await res.json();
+    INVADERS = raw.map(r=>({
+      id: r.id,
+      city: r.city,
+      cityName: cityName(r.city),
+      lat: parseFloat(String(r.lat).replace(',','.')),
+      lng: parseFloat(String(r.lng).replace(',','.')),
+      status: normStatus(r.status),
+      points: parseInt(r.points)||0,
+      hint: r.hint||''
+    })).filter(i=>!isNaN(i.lat)&&!isNaN(i.lng));
+    console.log(`Loaded ${INVADERS.length} invaders`);
+    refreshMarkers();
+    updateStats();
+  } catch(e){
+    console.error('Failed to load invaders data:', e);
+  }
+}
+
+// ── LOCAL STORAGE ──
+let flashedSet = new Set(JSON.parse(localStorage.getItem('flashy_flashed')||'[]'));
+let currentUID = localStorage.getItem('flashy_uid')||'';
+
+function saveFlashed(){
+  localStorage.setItem('flashy_flashed', JSON.stringify([...flashedSet]));
+}
+
+function updateUIDHeader(){
+  const dot = document.getElementById('uid-dot');
+  const label = document.getElementById('uid-label');
+  const action = document.getElementById('uid-action');
+  if(currentUID){
+    dot.classList.remove('off');
+    label.textContent = currentUID.length>16 ? currentUID.slice(0,14)+'…' : currentUID;
+    action.textContent = 'Change';
+  } else {
+    dot.classList.add('off');
+    label.textContent = 'No account';
+    action.textContent = 'Connect →';
+  }
+}
+
+// ── TABS ──
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['map','setup','stats'][i]===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(name+'-panel').classList.add('active');
+  if(name==='map') setTimeout(()=>window._map&&window._map.invalidateSize(),100);
+  if(name==='stats') updateStats();
+  if(name==='setup'){
+    if(currentUID){ showStep('step-done'); document.getElementById('done-uid').textContent=currentUID; }
+    else goStep(0);
+  }
+}
+
+// ── SETUP STEPS ──
+const STEPS=['step-0','step-1','step-2','step-3','step-4','step-done'];
+function showStep(id){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const idx=STEPS.indexOf(id);
+  for(let i=0;i<5;i++) document.getElementById('prog-'+i).classList.toggle('done',i<idx);
+}
+function goStep(n){ showStep(STEPS[n]); }
+
+function copyCmd(btn,text){
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='copied!'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='copy'; btn.classList.remove('copied'); },1800);
+  });
+}
+
+function saveUID(){
+  const uid = document.getElementById('uid-input').value.trim();
+  if(!uid){ showErr('Please paste your UID first.'); return; }
+  currentUID = uid;
+  localStorage.setItem('flashy_uid', uid);
+  updateUIDHeader();
+  document.getElementById('done-uid').textContent = uid;
+  showStep('step-done');
+  loadFlashedFromAPI(uid);
+}
+
+function showErr(msg){
+  const el = document.getElementById('uid-error');
+  el.style.display='block'; el.textContent=msg;
+}
+
+function disconnectUID(){
+  currentUID='';
+  localStorage.removeItem('flashy_uid');
+  flashedSet=new Set();
+  saveFlashed();
+  updateUIDHeader();
+  refreshMarkers();
+  goStep(0);
+}
+
+// ── FLASH INVADERS API ──
+async function loadFlashedFromAPI(uid){
+  if(!uid) return;
+  try {
+    const res = await fetch(`https://api.space-invaders.com/flashinvaders/users?uid=${uid}`);
+    if(res.ok){
+      const data = await res.json();
+      const list = data.flashedInvaders || data.flashed || [];
+      flashedSet = new Set(list.map(f=>f.id||f));
+      saveFlashed();
+      refreshMarkers();
+      updateStats();
+    }
+  } catch(e){ console.log('API not reachable, using local data'); }
+}
+
+// ── MAP ──
+function makeIcon(color){
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+    <rect x="2" y="2" width="18" height="18" rx="3" fill="${color}" opacity="0.92"/>
+    <rect x="5" y="5" width="3" height="3" fill="white" opacity="0.85"/>
+    <rect x="14" y="5" width="3" height="3" fill="white" opacity="0.85"/>
+    <rect x="8" y="9" width="6" height="2" fill="white" opacity="0.6"/>
+    <rect x="5" y="13" width="3" height="3" fill="white" opacity="0.6"/>
+    <rect x="14" y="13" width="3" height="3" fill="white" opacity="0.6"/>
+  </svg>`;
+  return L.divIcon({html:svg,className:'',iconSize:[22,22],iconAnchor:[11,11],popupAnchor:[0,-13]});
+}
+
+function markerColor(inv){
+  if(flashedSet.has(inv.id)) return '#374151';
+  if(inv.status==='destroyed') return '#ef4444';
+  if(inv.status==='damaged') return '#f59e0b';
+  return '#a855f7';
+}
+
+let markerLayer;
+
+function initMap(){
+  const map = L.map('map',{zoomControl:true}).setView([48.8538,2.3489],13);
+  window._map = map;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap', className:'map-tiles'
+  }).addTo(map);
+  const s=document.createElement('style');
+  s.textContent='.map-tiles{filter:grayscale(1) brightness(0.3)!important}';
+  document.head.appendChild(s);
+  markerLayer = L.markerClusterGroup({
+    maxClusterRadius: 50,
+    disableClusteringAtZoom: 17,
+    spiderfyOnMaxZoom: true,
+    chunkedLoading: true
+  });
+  map.addLayer(markerLayer);
+  refreshMarkers();
+}
+
+function refreshMarkers(){
+  if(!markerLayer) return;
+  markerLayer.clearLayers();
+  const hf=document.getElementById('hide-flashed').checked;
+  const hd=document.getElementById('hide-destroyed').checked;
+  INVADERS.forEach(inv=>{
+    const flashed=flashedSet.has(inv.id);
+    if(hf&&flashed) return;
+    if(hd&&inv.status==='destroyed') return;
+    const m=L.marker([inv.lat,inv.lng],{icon:makeIcon(markerColor(inv))});
+    m.bindPopup(makePopup(inv,flashed));
+    markerLayer.addLayer(m);
+  });
+}
+
+function makePopup(inv,flashed){
+  const sl={ok:'Active ✅',destroyed:'Destroyed ❌',damaged:'Damaged ⚠️',hidden:'Hidden 🙈'};
+  return `<div>
+    <div class="popup-id">${inv.id}</div>
+    <div class="popup-status">${inv.cityName} · ${sl[inv.status]||inv.status} · ${inv.points}pts</div>
+    ${inv.hint?`<div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;font-style:italic">💡 ${inv.hint}</div>`:''}
+    <button class="popup-btn ${flashed?'flashed':''}" onclick="toggleFlash('${inv.id}',this)">
+      ${flashed?'✓ Flashed':'👾 Mark as flashed'}
+    </button>
+  </div>`;
+}
+
+function toggleFlash(id,btn){
+  if(flashedSet.has(id)){ flashedSet.delete(id); btn.textContent='👾 Mark as flashed'; btn.classList.remove('flashed'); }
+  else { flashedSet.add(id); btn.textContent='✓ Flashed'; btn.classList.add('flashed'); }
+  saveFlashed();
+  refreshMarkers();
+  updateStats();
+}
+
+function toggleControls(){
+  document.getElementById('map-controls').classList.toggle('collapsed');
+}
+
+function flyToCity(city){
+  if(!city||!CITIES[city]) return;
+  const [lat,lng,zoom]=CITIES[city];
+  window._map.flyTo([lat,lng],zoom,{duration:1.2});
+}
+
+// ── STATS ──
+function updateStats(){
+  const total=INVADERS.length;
+  const flashed=INVADERS.filter(i=>flashedSet.has(i.id)).length;
+  const pct=total>0?Math.round(flashed/total*100):0;
+  document.getElementById('stat-flashed').textContent=flashed;
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('stat-pct').textContent=pct+'%';
+  document.getElementById('stats-no-uid').style.display=currentUID?'none':'block';
+  const cities={};
+  INVADERS.forEach(inv=>{
+    const key = inv.cityName;
+    if(!cities[key])cities[key]={total:0,flashed:0,code:inv.city};
+    cities[key].total++;
+    if(flashedSet.has(inv.id))cities[key].flashed++;
+  });
+  document.getElementById('city-breakdown').innerHTML=
+    Object.entries(cities).sort((a,b)=>b[1].total-a[1].total).map(([city,d])=>`
+      <div class="city-row">
+        <span class="city-flag">${cityFlag(d.code)}</span>
+        <span class="city-name">${city}</span>
+        <div class="city-bar-wrap"><div class="city-bar" style="width:${d.total>0?Math.round(d.flashed/d.total*100):0}%"></div></div>
+        <span class="city-count">${d.flashed}/${d.total}</span>
+      </div>`).join('');
+}
+
+// ── BOOT ──
+document.addEventListener('DOMContentLoaded',()=>{
+  initMap();
+  updateUIDHeader();
+  loadInvaders();
+  if(currentUID){ loadFlashedFromAPI(currentUID); }
+});
+</script>
+</body>
+</html>
