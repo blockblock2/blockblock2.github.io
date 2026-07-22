@@ -280,6 +280,67 @@
 .boot-choice:hover { border-color: var(--accent); color: var(--text); }
 .boot-choice.active { border-color: var(--accent2); background: rgba(124,58,237,0.15); color: var(--accent2); }
 .boot-choice .emoji { font-size: 1.4rem; display: block; margin-bottom: 3px; }
+.boot-section-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin: 20px 0 6px; }
+.boot-section-label:first-of-type { margin-top: 12px; }
+
+/* ── FULL-SCREEN BOOT VARIANTS ── */
+.boot-fs-glitch { position: fixed; inset: 0; font-family: 'Space Mono', monospace; font-size: min(22vw, 18rem); font-weight: 700; color: var(--text); display: flex; align-items: center; justify-content: center; animation: bootGlitch 0.15s infinite; background: var(--bg); }
+.boot-fs-glitch::before, .boot-fs-glitch::after { content: 'FLASHY'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.boot-fs-glitch::before { color: var(--red); animation: bootGlitchL 0.3s infinite; mix-blend-mode: screen; }
+.boot-fs-glitch::after { color: var(--term-cyan); animation: bootGlitchR 0.3s infinite; mix-blend-mode: screen; }
+
+.boot-fs-crt { position: fixed; inset: 0; background: #001100; font-family: 'Space Mono', monospace; color: var(--term-green); font-size: min(2.5vw, 1.4rem); padding: 8vh 6vw; text-shadow: 0 0 6px var(--term-green); overflow: hidden; }
+.boot-fs-crt::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(0,0,0,0.25) 3px, rgba(0,0,0,0.25) 4px); pointer-events: none; }
+.boot-fs-crt::after { content: ''; position: absolute; left: 0; right: 0; height: 20vh; top: -20vh; background: linear-gradient(180deg, transparent, rgba(74,222,128,0.15), transparent); animation: bootCrtScan 3s linear infinite; pointer-events: none; }
+.boot-fs-crt .line { opacity: 0; animation: bootLine 0.4s forwards; margin-bottom: 6px; }
+.boot-fs-crt .line:nth-child(1) { animation-delay: 0.1s; } .boot-fs-crt .line:nth-child(2) { animation-delay: 0.4s; }
+.boot-fs-crt .line:nth-child(3) { animation-delay: 0.7s; } .boot-fs-crt .line:nth-child(4) { animation-delay: 1.0s; }
+.boot-fs-crt .line:nth-child(5) { animation-delay: 1.3s; } .boot-fs-crt .line:nth-child(6) { animation-delay: 1.6s; }
+@keyframes bootCrtScan { to { top: 100vh; } }
+
+.boot-fs-matrix { position: fixed; inset: 0; overflow: hidden; background: #000; font-family: 'Space Mono', monospace; color: var(--term-green); }
+.boot-fs-matrix .col { position: absolute; top: -100vh; font-size: 22px; line-height: 1.2; text-shadow: 0 0 8px var(--term-green); animation: bootMatrixFall linear infinite; writing-mode: vertical-rl; letter-spacing: 3px; }
+@keyframes bootMatrixFall { to { top: 100vh; } }
+
+.boot-fs-radar { position: fixed; inset: 0; background: radial-gradient(circle at center, #0a1a0a, #000); display: flex; align-items: center; justify-content: center; }
+.boot-fs-radar .ring { width: min(80vmin, 500px); height: min(80vmin, 500px); border-radius: 50%; border: 2px solid rgba(74,222,128,0.3); position: relative; box-shadow: inset 0 0 60px rgba(74,222,128,0.15); }
+.boot-fs-radar .ring::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0deg, rgba(74,222,128,0.7) 60deg, transparent 90deg); animation: bootSweep 2.5s linear infinite; }
+.boot-fs-radar .ring::after { content: ''; position: absolute; inset: 40%; border-radius: 50%; border: 1px solid rgba(74,222,128,0.4); }
+
+.boot-fs-stars { position: fixed; inset: 0; background: radial-gradient(ellipse at center, #0a0a2a, #000); overflow: hidden; }
+.boot-fs-stars span { position: absolute; background: white; border-radius: 50%; animation: bootStar 2s infinite; }
+.boot-fs-stars .title { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: min(15vw, 8rem); font-weight: 700; color: var(--accent2); text-shadow: 0 0 30px var(--accent2), 0 0 60px var(--accent); animation: bootFlash 1s ease-in-out infinite alternate; }
+
+.boot-fs-marching { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; }
+.boot-fs-marching .row { display: flex; gap: min(4vw, 30px); }
+.boot-fs-marching .row span { width: min(10vw, 80px); height: min(10vw, 80px); background: var(--accent2); clip-path: polygon(20% 0, 80% 0, 100% 30%, 100% 70%, 80% 100%, 20% 100%, 0 70%, 0 30%); box-shadow: 0 0 20px var(--accent2); animation: bootMarch 1s infinite; }
+.boot-fs-marching .row span:nth-child(2) { animation-delay: 0.15s; }
+.boot-fs-marching .row span:nth-child(3) { animation-delay: 0.3s; }
+.boot-fs-marching .row span:nth-child(4) { animation-delay: 0.45s; }
+.boot-fs-marching .row span:nth-child(5) { animation-delay: 0.6s; }
+.boot-fs-marching .row span:nth-child(6) { animation-delay: 0.75s; }
+
+.boot-fs-progress { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3vh; }
+.boot-fs-progress .title { font-family: 'Space Mono', monospace; font-size: min(10vw, 5rem); font-weight: 700; color: var(--accent2); text-shadow: 0 0 20px var(--accent2); }
+.boot-fs-progress .lbl { font-family: 'Space Mono', monospace; font-size: 0.9rem; color: var(--muted); letter-spacing: 2px; }
+.boot-fs-progress .bar { width: min(70vw, 500px); height: 10px; background: var(--surface2); border-radius: 6px; overflow: hidden; }
+.boot-fs-progress .fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); animation: bootFill 2.5s ease-out infinite; }
+
+.boot-fs-arcade { position: fixed; inset: 0; background: #000; font-family: 'Space Mono', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 3vh; }
+.boot-fs-arcade .title { font-size: min(14vw, 6rem); font-weight: 700; color: var(--accent2); text-shadow: 0 0 20px var(--accent2); animation: bootFlash 0.5s infinite alternate; }
+.boot-fs-arcade .coin { font-size: 1.5rem; color: var(--yellow); animation: bootBlink 0.6s infinite; }
+.boot-fs-arcade .score { color: var(--term-cyan); font-size: 1.1rem; letter-spacing: 3px; }
+.boot-fs-arcade .lives { font-size: 2rem; }
+
+.boot-fs-neon { position: fixed; inset: 0; background: #0a0a1a; display: flex; align-items: center; justify-content: center; }
+.boot-fs-neon .text { font-family: 'Space Mono', monospace; font-size: min(14vw, 7rem); font-weight: 700; color: var(--accent2); padding: 4vh 6vw; border: 3px solid var(--accent2); border-radius: 12px; animation: bootNeonFs 1.5s ease-in-out infinite; }
+@keyframes bootNeonFs { 0%, 100% { box-shadow: 0 0 10px var(--accent2), inset 0 0 10px var(--accent2); text-shadow: 0 0 10px var(--accent2); } 50% { box-shadow: 0 0 60px var(--accent2), 0 0 100px var(--accent), inset 0 0 40px var(--accent2); text-shadow: 0 0 30px var(--accent2), 0 0 60px var(--accent); } }
+
+.boot-fs-text { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: min(22vw, 15rem); font-weight: 700; color: var(--accent2); animation: bootFlash 0.6s ease-in-out infinite alternate; letter-spacing: 0.1em; }
+
+.boot-fs-fw { position: fixed; inset: 0; background: #000; overflow: hidden; }
+.boot-fs-fw .burst { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border-radius: 50%; animation: bootFwBig 2s ease-out infinite; }
+@keyframes bootFwBig { 0% { transform: translate(-50%,-50%) rotate(var(--a)) translateX(0); opacity: 1; } 100% { transform: translate(-50%,-50%) rotate(var(--a)) translateX(min(45vmin, 350px)); opacity: 0; } }
 
 * { box-sizing:border-box; margin:0; padding:0; }
 body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; display:flex; flex-direction:column; }
@@ -784,7 +845,8 @@ header {
     <div class="step-label" style="margin-bottom:6px">Settings</div>
     <h3 style="font-family:'Space Mono',monospace;font-size:1rem;margin-bottom:12px">Boot animation</h3>
     <p style="color:var(--muted);font-size:0.85rem;line-height:1.5;margin-bottom:8px">Pick what plays when Flashy opens.</p>
-    <div class="boot-picker" id="boot-picker">
+    <div class="boot-section-label">Small · Subtle</div>
+    <div class="boot-picker">
       <div class="boot-choice" data-boot="invader" onclick="pickBoot('invader')"><span class="emoji">👾</span>Invader</div>
       <div class="boot-choice" data-boot="terminal" onclick="pickBoot('terminal')"><span class="emoji">💻</span>Terminal</div>
       <div class="boot-choice" data-boot="scan" onclick="pickBoot('scan')"><span class="emoji">🔵</span>Scan</div>
@@ -820,6 +882,21 @@ header {
       <div class="boot-choice" data-boot="diamond" onclick="pickBoot('diamond')"><span class="emoji">💎</span>Diamond</div>
       <div class="boot-choice" data-boot="pxscan" onclick="pickBoot('pxscan')"><span class="emoji">🔍</span>Pixel</div>
       <div class="boot-choice" data-boot="rain" onclick="pickBoot('rain')"><span class="emoji">🌧️</span>Rain</div>
+    </div>
+
+    <div class="boot-section-label">Full screen · Dramatic</div>
+    <div class="boot-picker">
+      <div class="boot-choice" data-boot="fs-text" onclick="pickBoot('fs-text')"><span class="emoji">✨</span>Flashy XL</div>
+      <div class="boot-choice" data-boot="fs-glitch" onclick="pickBoot('fs-glitch')"><span class="emoji">📺</span>Glitch XL</div>
+      <div class="boot-choice" data-boot="fs-crt" onclick="pickBoot('fs-crt')"><span class="emoji">🖥️</span>CRT XL</div>
+      <div class="boot-choice" data-boot="fs-matrix" onclick="pickBoot('fs-matrix')"><span class="emoji">🟢</span>Matrix XL</div>
+      <div class="boot-choice" data-boot="fs-radar" onclick="pickBoot('fs-radar')"><span class="emoji">📡</span>Radar XL</div>
+      <div class="boot-choice" data-boot="fs-stars" onclick="pickBoot('fs-stars')"><span class="emoji">⭐</span>Stars XL</div>
+      <div class="boot-choice" data-boot="fs-marching" onclick="pickBoot('fs-marching')"><span class="emoji">👾</span>March XL</div>
+      <div class="boot-choice" data-boot="fs-progress" onclick="pickBoot('fs-progress')"><span class="emoji">📊</span>Progress XL</div>
+      <div class="boot-choice" data-boot="fs-arcade" onclick="pickBoot('fs-arcade')"><span class="emoji">🎮</span>Arcade XL</div>
+      <div class="boot-choice" data-boot="fs-neon" onclick="pickBoot('fs-neon')"><span class="emoji">💡</span>Neon XL</div>
+      <div class="boot-choice" data-boot="fs-fw" onclick="pickBoot('fs-fw')"><span class="emoji">🎆</span>Firework XL</div>
       <div class="boot-choice" data-boot="off" onclick="pickBoot('off')"><span class="emoji">🚫</span>Off</div>
     </div>
     <button class="btn btn-ghost" style="margin-top:12px;font-size:0.78rem" onclick="previewBoot()">▶ Preview</button>
@@ -1559,6 +1636,127 @@ const BOOT_ANIMATIONS = {
     const b = document.createElement('div');
     b.className = 'boot-rain';
     for(let i=0;i<7;i++) b.appendChild(document.createElement('span'));
+    return b;
+  },
+  // ── FULL SCREEN VARIANTS ──
+  'fs-text': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-text';
+    b.textContent = 'FLASHY';
+    return b;
+  },
+  'fs-glitch': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-glitch';
+    b.textContent = 'FLASHY';
+    return b;
+  },
+  'fs-crt': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-crt';
+    b.innerHTML = `
+      <div class="line">FLASHY BIOS v1.0 · © 2026 BLOCKBLOCK</div>
+      <div class="line">> Memory check ....... OK</div>
+      <div class="line">> Fetching invaders .. 4,285 mosaics</div>
+      <div class="line">> Loading map tiles .. OK</div>
+      <div class="line">> Initializing UID ... ready</div>
+      <div class="line">> SYSTEM READY_</div>
+    `;
+    return b;
+  },
+  'fs-matrix': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-matrix';
+    const chars = '01アイウエオカキクABCFLASHY';
+    const cols = Math.max(10, Math.floor(window.innerWidth / 30));
+    for(let i=0;i<cols;i++){
+      const col = document.createElement('div');
+      col.className = 'col';
+      col.style.left = (i * (100/cols)) + '%';
+      col.style.animationDuration = (Math.random()*3 + 2) + 's';
+      col.style.animationDelay = (Math.random()*-3) + 's';
+      let text = '';
+      for(let j=0;j<20;j++) text += chars[Math.floor(Math.random()*chars.length)] + '\n';
+      col.textContent = text;
+      b.appendChild(col);
+    }
+    return b;
+  },
+  'fs-radar': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-radar';
+    b.innerHTML = '<div class="ring"></div>';
+    return b;
+  },
+  'fs-stars': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-stars';
+    for(let i=0;i<100;i++){
+      const s = document.createElement('span');
+      const size = Math.random()*3 + 1;
+      s.style.width = size + 'px';
+      s.style.height = size + 'px';
+      s.style.top = Math.random()*100 + '%';
+      s.style.left = Math.random()*100 + '%';
+      s.style.boxShadow = `0 0 ${size*2}px white`;
+      s.style.animationDelay = (Math.random()*2) + 's';
+      b.appendChild(s);
+    }
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = 'FLASHY';
+    b.appendChild(title);
+    return b;
+  },
+  'fs-marching': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-marching';
+    const row = document.createElement('div');
+    row.className = 'row';
+    for(let i=0;i<6;i++) row.appendChild(document.createElement('span'));
+    b.appendChild(row);
+    return b;
+  },
+  'fs-progress': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-progress';
+    b.innerHTML = `
+      <div class="title">FLASHY</div>
+      <div class="lbl">LOADING INVADERS</div>
+      <div class="bar"><div class="fill"></div></div>
+    `;
+    return b;
+  },
+  'fs-arcade': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-arcade';
+    b.innerHTML = `
+      <div class="title">FLASHY</div>
+      <div class="lives">👾 👾 👾</div>
+      <div class="score">HIGH SCORE 999999</div>
+      <div class="coin">INSERT COIN</div>
+    `;
+    return b;
+  },
+  'fs-neon': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-neon';
+    b.innerHTML = '<div class="text">FLASHY</div>';
+    return b;
+  },
+  'fs-fw': () => {
+    const b = document.createElement('div');
+    b.className = 'boot-fs-fw';
+    const colors = ['#a855f7','#7c3aed','#22d3ee','#4ade80','#f59e0b','#ef4444'];
+    for(let i=0;i<24;i++){
+      const s = document.createElement('div');
+      s.className = 'burst';
+      s.style.setProperty('--a', (i*15) + 'deg');
+      s.style.background = colors[i%colors.length];
+      s.style.boxShadow = `0 0 8px ${colors[i%colors.length]}`;
+      s.style.animationDelay = (Math.floor(i/8) * 0.3) + 's';
+      b.appendChild(s);
+    }
     return b;
   }
 };
