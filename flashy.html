@@ -1361,7 +1361,7 @@ function flyToInvader(id){
   }, 1400);
 }
 
-// Haversine distance in km
+// Haversine distance in km (used only for the initial candidate pool)
 function distanceKm(lat1, lng1, lat2, lng2){
   const R = 6371;
   const dLat = (lat2-lat1)*Math.PI/180;
@@ -1376,9 +1376,43 @@ function fmtDist(km){
   return Math.round(km) + ' km';
 }
 
+function fmtWalkTime(minutes){
+  if(minutes < 1) return '< 1 min';
+  if(minutes < 60) return Math.round(minutes) + ' min';
+  const h = Math.floor(minutes/60);
+  const m = Math.round(minutes%60);
+  return `${h}h ${m}m`;
+}
+
+// Get walking travel times from OSRM (free, no key)
+async function getWalkTimes(fromLat, fromLng, candidates){
+  // Batch: pass all destinations as one table request
+  const coords = [`${fromLng},${fromLat}`].concat(candidates.map(c=>`${c.lng},${c.lat}`)).join(';');
+  const url = `https://router.project-osrm.org/table/v1/foot/${coords}?sources=0&annotations=duration,distance`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if(!data.durations || !data.durations[0]) throw new Error('no durations');
+    // durations[0] is from source 0 to all destinations (including self at index 0)
+    return candidates.map((c, i) => ({
+      ...c,
+      walkMinutes: data.durations[0][i+1] / 60,
+      walkKm: (data.distances[0][i+1] || 0) / 1000
+    }));
+  } catch(e){
+    console.warn('OSRM failed, falling back to straight-line estimate', e);
+    // Fallback: estimate 12 min/km walking pace
+    return candidates.map(c => ({
+      ...c,
+      walkMinutes: c.dist * 12,
+      walkKm: c.dist
+    }));
+  }
+}
+
 let userLocationMarker = null;
 
-function showNearResults(lat, lng, label){
+async function showNearResults(lat, lng, label){
   const list = document.getElementById('near-me-list');
   window._map.flyTo([lat, lng], 15, {duration: 1.5});
   
@@ -1390,22 +1424,33 @@ function showNearResults(lat, lng, label){
   userLocationMarker = L.marker([lat,lng], {icon:youIcon, zIndexOffset:1000}).addTo(window._map);
   userLocationMarker.bindPopup(`<div style="text-align:center;font-weight:600">${label}</div>`);
   
-  const withDist = INVADERS.map(inv => ({
-    ...inv,
-    dist: distanceKm(lat, lng, inv.lat, inv.lng)
-  })).sort((a,b) => a.dist - b.dist).slice(0, 10);
+  // Filter OUT destroyed ones, then get the 25 closest by straight-line as candidates
+  const candidates = INVADERS
+    .filter(inv => inv.status !== 'destroyed')
+    .map(inv => ({...inv, dist: distanceKm(lat, lng, inv.lat, inv.lng)}))
+    .sort((a,b) => a.dist - b.dist)
+    .slice(0, 25);
   
   list.style.display = 'block';
+  list.innerHTML = `<div style="padding:12px;font-size:0.75rem;color:var(--muted);text-align:center">🚶 Calculating walking times…</div>`;
+  
+  // Get real walking times for those 25, then take fastest 10
+  const withTimes = await getWalkTimes(lat, lng, candidates);
+  const fastest = withTimes.sort((a,b) => a.walkMinutes - b.walkMinutes).slice(0, 10);
+  
   list.innerHTML = `
     <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:6px 2px 4px">
-      Closest ${withDist.length} to ${label}
+      Fastest ${fastest.length} from ${label}
     </div>
-    ${withDist.map(m => {
+    ${fastest.map(m => {
       const flashed = flashedSet.has(m.id);
-      return `<div onclick="flyToInvader('${m.id}')" style="padding:7px 9px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:0.76rem;margin-bottom:3px;background:var(--surface2)"
+      return `<div onclick="flyToInvader('${m.id}')" style="padding:8px 9px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:0.76rem;margin-bottom:3px;background:var(--surface2)"
         onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--surface2)'">
         <span style="font-family:'Space Mono',monospace;font-weight:700;color:${flashed?'var(--muted)':'var(--accent2)'};min-width:60px">${m.id}</span>
-        <span style="flex:1;color:var(--muted);font-size:0.7rem">${cityFlag(m.city)} ${fmtDist(m.dist)}</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+          <span style="color:var(--text);font-size:0.72rem;font-weight:600">🚶 ${fmtWalkTime(m.walkMinutes)}</span>
+          <span style="color:var(--muted);font-size:0.68rem">${cityFlag(m.city)} ${fmtDist(m.walkKm || m.dist)}</span>
+        </div>
         ${flashed?'<span style="color:var(--green);font-size:0.72rem">✓</span>':''}
       </div>`;
     }).join('')}`;
