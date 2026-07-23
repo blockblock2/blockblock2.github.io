@@ -407,6 +407,19 @@
 .boot-fs-fw .burst { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; border-radius: 50%; animation: bootFwBig 2s ease-out infinite; }
 @keyframes bootFwBig { 0% { transform: translate(-50%,-50%) rotate(var(--a)) translateX(0); opacity: 1; } 100% { transform: translate(-50%,-50%) rotate(var(--a)) translateX(min(45vmin, 350px)); opacity: 0; } }
 
+/* Toggle switch */
+#spoiler-toggle:checked + #spoiler-slider { background: var(--accent2); }
+#spoiler-slider::before { content:''; position:absolute; left:2px; top:2px; width:20px; height:20px; background:#fff; border-radius:50%; transition:0.2s; }
+#spoiler-toggle:checked + #spoiler-slider::before { transform: translateX(20px); }
+
+/* Popup photo */
+.popup-photo-wrap { position:relative; margin-top:8px; border-radius:6px; overflow:hidden; background:var(--surface2); min-height:100px; max-width:220px; }
+.popup-photo { display:block; width:100%; height:auto; max-height:180px; object-fit:cover; }
+.popup-photo.blurred { filter: blur(18px); transform: scale(1.15); }
+.popup-photo-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; background:rgba(0,0,0,0.35); font-size:0.7rem; text-align:center; padding:8px; color:#fff; }
+.popup-photo-overlay .peek-btn { background:var(--accent); border:none; border-radius:6px; color:#fff; font-size:0.7rem; padding:4px 10px; cursor:pointer; font-family:'Inter',sans-serif; font-weight:600; }
+.popup-photo-nofound { color:var(--muted); font-size:0.72rem; padding:14px 12px; text-align:center; font-style:italic; }
+
 * { box-sizing:border-box; margin:0; padding:0; }
 body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; display:flex; flex-direction:column; }
 
@@ -908,6 +921,14 @@ header {
   <!-- Settings section (always visible) -->
   <div style="margin-top:40px;padding-top:24px;border-top:1px solid var(--border)">
     <div class="step-label" style="margin-bottom:6px">Settings</div>
+    <h3 style="font-family:'Space Mono',monospace;font-size:1rem;margin-bottom:12px">Your Flash Invaders username</h3>
+    <p style="color:var(--muted);font-size:0.85rem;line-height:1.5;margin-bottom:10px">Used to credit photos you upload. Saved on this device only.</p>
+    <div style="display:flex;gap:8px;margin-bottom:24px">
+      <input type="text" id="username-input" placeholder="e.g. flasher123"
+             oninput="saveUsername(this.value)"
+             style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.85rem;padding:10px 13px;outline:none"/>
+    </div>
+
     <h3 style="font-family:'Space Mono',monospace;font-size:1rem;margin-bottom:12px">Boot animation</h3>
     <p style="color:var(--muted);font-size:0.85rem;line-height:1.5;margin-bottom:8px">Pick what plays when Flashy opens.</p>
     <div class="boot-section-label">Small · Subtle</div>
@@ -1228,10 +1249,12 @@ async function loadFlashedFromAPI(uid){
   if(!uid) return;
   try {
     const res = await fetch(`https://api.space-invaders.com/flashinvaders/users?uid=${uid}`);
-    if(res.ok){
-      const data = await res.json();
-      const list = data.flashedInvaders || data.flashed || [];
-      flashedSet = new Set(list.map(f=>f.id||f));
+    if(!res.ok) return;
+    const data = await res.json();
+    const list = data.flashedInvaders || data.flashed || [];
+    // Only overwrite if API actually returned data — merge, don't replace
+    if(list.length > 0){
+      list.forEach(f => flashedSet.add(f.id || f));
       saveFlashed();
       refreshMarkers();
       updateStats();
@@ -1295,18 +1318,156 @@ function refreshMarkers(){
   });
 }
 
+// ── SPOILER MODE ──
+let spoilerMode = localStorage.getItem('flashy_spoiler') === 'on';
+const peekedInvaders = new Set();
+
+function toggleSpoiler(on){
+  spoilerMode = on;
+  localStorage.setItem('flashy_spoiler', on ? 'on' : 'off');
+}
+
+function initSpoilerToggle(){
+  document.getElementById('spoiler-toggle').checked = spoilerMode;
+}
+
+// Try multiple image URL patterns and pick whichever loads first
+function invaderPhotoUrl(id){
+  // Common pattern used by community mirrors — lowercase filename
+  return `https://api.space-invaders.com/api/gallery/invader/${id}.jpg`;
+}
+
+function peekInvader(id, wrapEl){
+  peekedInvaders.add(id);
+  const img = wrapEl.querySelector('.popup-photo');
+  const overlay = wrapEl.querySelector('.popup-photo-overlay');
+  if(img) img.classList.remove('blurred');
+  if(overlay) overlay.remove();
+}
+
+// ── PHOTO UPLOAD via Cloudflare Worker ──
+const PHOTO_WORKER_URL = 'https://flasysphotos.mateobaraldi16.workers.dev';
+const PHOTO_INDEX_URL = 'https://api.github.com/repos/blockblock2/Flashy-photos/contents/photos';
+const PHOTO_BASE_URL = 'https://blockblock2.github.io/Flashy-photos/';
+
+let photoIndex = {}; // { invaderId: [ {url, username, timestamp} ] }
+let photoIndexLoaded = false;
+
+async function loadPhotoIndex(){
+  try {
+    const res = await fetch(PHOTO_INDEX_URL);
+    if(!res.ok) throw new Error('index fetch failed');
+    const files = await res.json();
+    photoIndex = {};
+    files.forEach(f => {
+      // Filename format: INVADERID_username_timestamp.jpg
+      const m = f.name.match(/^([A-Za-z0-9_-]+?)_([A-Za-z0-9_-]+)_(\d+)\.jpg$/);
+      if(!m) return;
+      const [_, invaderId, username, timestamp] = m;
+      if(!photoIndex[invaderId]) photoIndex[invaderId] = [];
+      photoIndex[invaderId].push({
+        url: PHOTO_BASE_URL + 'photos/' + f.name,
+        username: username,
+        timestamp: parseInt(timestamp)
+      });
+    });
+    photoIndexLoaded = true;
+    console.log(`Loaded ${Object.keys(photoIndex).length} invaders with photos`);
+  } catch(e){
+    console.warn('Could not load photo index:', e);
+    photoIndexLoaded = true; // Don't block popup display
+  }
+}
+
+function getUsername(){
+  return localStorage.getItem('flashy_username') || '';
+}
+
+function saveUsername(name){
+  const clean = name.trim().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 30);
+  localStorage.setItem('flashy_username', clean);
+}
+
+async function uploadPhoto(invaderId, file, statusEl){
+  const username = getUsername() || 'anon';
+  statusEl.textContent = '📤 Uploading…';
+  statusEl.style.color = 'var(--muted)';
+  try {
+    // Read file as base64
+    const base64 = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(file);
+    });
+    const res = await fetch(PHOTO_WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invaderId, username, photoBase64: base64 })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.success) throw new Error(data.error || 'upload failed');
+    statusEl.textContent = '✅ Uploaded! Reloading…';
+    statusEl.style.color = 'var(--green)';
+    // Add to local index right away so it shows without reload
+    if(!photoIndex[invaderId]) photoIndex[invaderId] = [];
+    photoIndex[invaderId].push({ url: data.url, username, timestamp: Date.now() });
+    // Reopen the popup to show the new photo
+    setTimeout(() => {
+      markerLayer.eachLayer(layer => {
+        if(layer.options && layer.options.invaderId === invaderId){
+          layer.setPopupContent(makePopup(INVADERS.find(i=>i.id===invaderId), flashedSet.has(invaderId)));
+        }
+      });
+    }, 1200);
+  } catch(e){
+    statusEl.textContent = '❌ Upload failed: ' + e.message;
+    statusEl.style.color = 'var(--red)';
+  }
+}
+
+function triggerPhotoUpload(invaderId){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment'; // prefer rear camera on mobile
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.onchange = async () => {
+    if(!input.files || !input.files[0]) return;
+    const statusEl = document.getElementById(`upload-status-${invaderId}`);
+    if(statusEl) await uploadPhoto(invaderId, input.files[0], statusEl);
+    document.body.removeChild(input);
+  };
+  input.click();
+}
+
 function makePopup(inv,flashed){
   const sl={ok:'Active ✅',destroyed:'Destroyed ❌',damaged:'Damaged ⚠️',hidden:'Hidden 🙈'};
   const igTag = inv.id;
   const mapsUrl = `https://maps.apple.com/?ll=${inv.lat},${inv.lng}&q=${encodeURIComponent('Flash Invader ' + inv.id)}&t=m&dirflg=w`;
-  const shareUrl = `https://blockblock2.github.io/flashy?invader=${inv.id}`;
+  const uploadedPhotos = photoIndex[inv.id] || [];
+  const photosHtml = uploadedPhotos.length > 0 ? `
+    <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto">
+      ${uploadedPhotos.map(p => `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+          <img src="${p.url}" style="width:100%;height:auto;max-height:180px;object-fit:cover;display:block" onerror="this.parentElement.style.display='none'"/>
+          <div style="padding:5px 8px;font-size:0.68rem;color:var(--muted)">📷 by @${p.username}</div>
+        </div>`).join('')}
+    </div>` : '';
   return `<div>
     <div class="popup-id">${inv.id}</div>
     <div class="popup-status">${inv.cityName} · ${sl[inv.status]||inv.status} · ${inv.points}pts</div>
     ${inv.hint?`<div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;font-style:italic">💡 ${inv.hint}</div>`:''}
-    <button class="popup-btn ${flashed?'flashed':''}" onclick="toggleFlash('${inv.id}',this)">
+    ${photosHtml}
+    <button class="popup-btn ${flashed?'flashed':''}" style="margin-top:8px" onclick="toggleFlash('${inv.id}',this)">
       ${flashed?'✓ Flashed':'👾 Mark as flashed'}
     </button>
+    <button onclick="triggerPhotoUpload('${inv.id}')"
+       style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;background:var(--green);border:none;border-radius:6px;color:#fff;font-size:0.75rem;padding:6px 10px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;width:100%">
+      📸 Add a photo
+    </button>
+    <div id="upload-status-${inv.id}" style="font-size:0.7rem;text-align:center;margin-top:4px;color:var(--muted)"></div>
     <a href="${mapsUrl}" target="_blank"
        style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;background:#2563eb;border-radius:6px;color:#fff;font-size:0.75rem;padding:6px 10px;text-decoration:none;font-family:'Inter',sans-serif;font-weight:600">
       🗺️ Open in Maps
@@ -1997,7 +2158,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   initMap();
   updateUIDHeader();
   loadInvaders();
+  loadPhotoIndex();
   initBootPicker();
+  // Load saved username into input
+  const savedUsername = getUsername();
+  const usernameInput = document.getElementById('username-input');
+  if(usernameInput && savedUsername) usernameInput.value = savedUsername;
   if(currentUID){ loadFlashedFromAPI(currentUID); }
 });
 </script>
