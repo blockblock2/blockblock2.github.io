@@ -1427,14 +1427,22 @@ async function uploadPhoto(invaderId, file, statusEl){
   statusEl.style.color = 'var(--muted)';
   try {
     const base64 = await compressPhoto(file);
-    statusEl.textContent = '📤 Uploading…';
+    const sizeKB = Math.round(base64.length * 0.75 / 1024);
+    console.log(`Compressed photo size: ~${sizeKB} KB`);
+    statusEl.textContent = `📤 Uploading ${sizeKB}KB…`;
     const res = await fetch(PHOTO_WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invaderId, username, photoBase64: base64 })
     });
-    const data = await res.json();
-    if(!res.ok || !data.success) throw new Error(data.error || 'upload failed');
+    let data;
+    try { data = await res.json(); } catch(_) { 
+      throw new Error(`HTTP ${res.status}: ${await res.text().catch(()=>'no body')}`);
+    }
+    if(!res.ok || !data.success){
+      const detail = data.details || data.error || `HTTP ${res.status}`;
+      throw new Error(detail);
+    }
     statusEl.textContent = '✅ Uploaded! Refreshing…';
     statusEl.style.color = 'var(--green)';
     if(!photoIndex[invaderId]) photoIndex[invaderId] = [];
@@ -1447,7 +1455,8 @@ async function uploadPhoto(invaderId, file, statusEl){
       });
     }, 1200);
   } catch(e){
-    statusEl.textContent = '❌ ' + (e.message || 'Upload failed');
+    console.error('Upload error:', e);
+    statusEl.textContent = '❌ ' + String(e.message || e).slice(0, 100);
     statusEl.style.color = 'var(--red)';
   }
 }
