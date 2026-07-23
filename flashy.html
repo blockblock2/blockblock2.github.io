@@ -1463,16 +1463,10 @@ function makePopup(inv,flashed){
     <button class="popup-btn ${flashed?'flashed':''}" style="margin-top:8px" onclick="toggleFlash('${inv.id}',this)">
       ${flashed?'✓ Flashed':'👾 Mark as flashed'}
     </button>
-    <div style="display:flex;gap:5px;margin-top:6px">
-      <button onclick="triggerPhotoUpload('${inv.id}', true)"
-         style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;background:var(--green);border:none;border-radius:6px;color:#fff;font-size:0.72rem;padding:6px 8px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">
-        📷 Take
-      </button>
-      <button onclick="triggerPhotoUpload('${inv.id}', false)"
-         style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:0.72rem;padding:6px 8px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600">
-        🖼️ Choose
-      </button>
-    </div>
+    <button onclick="triggerPhotoUpload('${inv.id}', false)"
+       style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;background:var(--green);border:none;border-radius:6px;color:#fff;font-size:0.75rem;padding:6px 10px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;width:100%">
+      📸 Upload
+    </button>
     <div id="upload-status-${inv.id}" style="font-size:0.7rem;text-align:center;margin-top:4px;color:var(--muted)"></div>
     <a href="${mapsUrl}" target="_blank"
        style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;background:#2563eb;border-radius:6px;color:#fff;font-size:0.75rem;padding:6px 10px;text-decoration:none;font-family:'Inter',sans-serif;font-weight:600">
