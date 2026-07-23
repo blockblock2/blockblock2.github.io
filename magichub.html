@@ -583,11 +583,9 @@
 
 <script>
 // ── Config ─────────────────────────────────────────────────────
-const GH_REPO  = 'blockblock2/Magic-tricks';
-const GH_TOKEN = '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';
-const GH_API   = `https://api.github.com/repos/${GH_REPO}`;
+const WORKER   = 'https://magic.mateobaraldi16.workers.dev';
 const IS_ADMIN = new URLSearchParams(location.search).has('admin');
-const HEADERS  = { 'Authorization': `Bearer ${GH_TOKEN}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' };
+
 
 // ── Cursor sparkle (mouse/trackpad only, not touch) ────────────
 const cur = document.getElementById('cursor');
@@ -654,7 +652,7 @@ async function loadTricks() {
     <p style="margin-top:8px">Loading tricks…</p>
   </div>`;
   try {
-    const res = await fetch(`${GH_API}/issues?state=open&labels=trick&per_page=100`, { headers: HEADERS });
+    const res = await fetch(`${WORKER}/magichub/issues`);
     if (!res.ok) throw new Error(res.status);
     const issues = await res.json();
     localTricks = issues.map(issueToTrick);
@@ -777,10 +775,9 @@ async function deleteTrick(issueNumber, btn) {
   if (!confirm('Remove this trick? This cannot be undone.')) return;
   btn.textContent = 'Removing…'; btn.disabled = true;
   try {
-    const res = await fetch(`${GH_API}/issues/${issueNumber}`, {
+    const res = await fetch(`${WORKER}/magichub/issues/${issueNumber}/close`, {
       method: 'PATCH',
-      headers: HEADERS,
-      body: JSON.stringify({ state: 'closed' })
+      headers: { 'Content-Type': 'application/json' },
     });
     if (!res.ok) throw new Error();
     localTricks = localTricks.filter(t => t.issueNumber !== issueNumber);
@@ -825,14 +822,13 @@ async function submitTrick() {
   submitBtn.textContent = '✦ Publishing…'; submitBtn.disabled = true;
 
   try {
-    const res = await fetch(`${GH_API}/issues`, {
+    const res = await fetch(`${WORKER}/magichub/issues`, {
       method: 'POST',
-      headers: HEADERS,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: name,
         body: `Submitted by: **${auth}**\n\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``,
-        labels: ['trick']
-      })
+      }),
     });
     if (!res.ok) throw new Error(await res.text());
     const issue = await res.json();
@@ -891,18 +887,8 @@ function checkHash() {
   }
 }
 
-// ── Ensure 'trick' label exists, then load ─────────────────────
-async function ensureLabelAndLoad() {
-  // Try to create the label (no-op if it already exists)
-  await fetch(`${GH_API}/labels`, {
-    method: 'POST', headers: HEADERS,
-    body: JSON.stringify({ name: 'trick', color: 'f5c842', description: 'A magic trick submission' })
-  }).catch(()=>{});
-  await loadTricks();
-  checkHash();
-}
-
-ensureLabelAndLoad();
+// ── Init ───────────────────────────────────────────────────────
+loadTricks().then(checkHash);
 </script>
 </body>
 </html>
