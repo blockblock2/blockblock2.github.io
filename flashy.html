@@ -1099,6 +1099,12 @@ async function loadInvaders(){
     console.log(`Loaded ${INVADERS.length} invaders`);
     refreshMarkers();
     updateStats();
+    // If URL has ?invader=ID, fly to it after markers load
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get('invader');
+    if(target){
+      setTimeout(() => flyToInvader(target.toUpperCase()), 800);
+    }
   } catch(e){
     console.error('Failed to load invaders data:', e);
   } finally {
@@ -1292,7 +1298,8 @@ function refreshMarkers(){
 function makePopup(inv,flashed){
   const sl={ok:'Active ✅',destroyed:'Destroyed ❌',damaged:'Damaged ⚠️',hidden:'Hidden 🙈'};
   const igTag = inv.id;
-  const mapsUrl = `https://maps.apple.com/?daddr=${inv.lat},${inv.lng}&q=${encodeURIComponent(inv.id)}&dirflg=w`;
+  const mapsUrl = `https://maps.apple.com/?ll=${inv.lat},${inv.lng}&q=${encodeURIComponent('Flash Invader ' + inv.id)}&t=m&dirflg=w`;
+  const shareUrl = `https://blockblock2.github.io/flashy?invader=${inv.id}`;
   return `<div>
     <div class="popup-id">${inv.id}</div>
     <div class="popup-status">${inv.cityName} · ${sl[inv.status]||inv.status} · ${inv.points}pts</div>
@@ -1308,7 +1315,39 @@ function makePopup(inv,flashed){
        style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:6px;color:#fff;font-size:0.75rem;padding:6px 10px;text-decoration:none;font-family:'Inter',sans-serif;font-weight:600">
       📷 See on Instagram
     </a>
+    <button onclick="shareInvader('${inv.id}', this)"
+       style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:0.75rem;padding:6px 10px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;width:100%">
+      📤 Share this invader
+    </button>
   </div>`;
+}
+
+const SHARE_PHRASES = [
+  "I found a space invader! Check it out 👾",
+  "Look — there's an invader nearby 👀",
+  "Hunt this one down with me 👾",
+  "Spotted a Flash Invader — go get it! 🚀",
+  "You gotta see this invader 👾✨",
+  "Found one! Flash it before someone else does 📸",
+  "New invader unlocked 🔓👾",
+  "Beam yourself over here 🛸",
+  "This one's calling your name 👾",
+  "Free points if you flash this one 💯"
+];
+
+function shareInvader(id, btn){
+  const url = `https://blockblock2.github.io/flashy?invader=${id}`;
+  const phrase = SHARE_PHRASES[Math.floor(Math.random() * SHARE_PHRASES.length)];
+  const message = `${phrase}\n${url}`;
+  const shareData = { title: `Flash Invader ${id}`, text: phrase, url };
+  if(navigator.share){
+    navigator.share(shareData).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(message).then(()=>{
+      btn.textContent = '✅ Copied!';
+      setTimeout(()=>{ btn.textContent='📤 Share this invader'; }, 1800);
+    });
+  }
 }
 
 function toggleFlash(id,btn){
