@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MagicHub — Kids' Magic Tricks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #0d1b2a;
+    --navy-mid: #162233;
+    --navy-card: #1c2d42;
+    --gold: #f5c842;
+    --gold-dim: #c8a130;
+    --magenta: #e8276b;
+    --white: #f0eee8;
+    --muted: #8fa0b4;
+    --green: #3ecf8e;
+    --radius: 16px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    cursor: none;
+  }
+
+  /* ── Sparkle cursor ── */
+  #cursor {
+    position: fixed; top: 0; left: 0;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%,-50%);
+    transition: transform .08s ease, background .2s;
+    mix-blend-mode: screen;
+  }
+  .sparkle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9998;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    animation: sparkleFade .6s ease forwards;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes sparkleFade {
+    0%   { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%,-50%) scale(0) translateY(-20px); }
+  }
+
+  /* ── Nav ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,27,42,.92);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 32px;
+    border-bottom: 1px solid rgba(245,200,66,.15);
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem; font-weight: 900;
+    color: var(--gold);
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--magenta); }
+  nav ul { list-style: none; display: flex; gap: 28px; }
+  nav a { text-decoration: none; color: var(--muted); font-weight: 500; font-size: .9rem; transition: color .2s; }
+  nav a:hover { color: var(--gold); }
+  .btn-upload-nav {
+    background: var(--magenta);
+    color: #fff;
+    border: none; border-radius: 50px;
+    padding: 9px 22px; font-weight: 600; font-size: .88rem;
+    cursor: none; transition: background .2s, transform .15s;
+  }
+  .btn-upload-nav:hover { background: #c71f5a; transform: scale(1.04); }
+
+  /* ── Hero ── */
+  .hero {
+    text-align: center;
+    padding: 90px 24px 60px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(245,200,66,.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    display: inline-block;
+    background: rgba(245,200,66,.12);
+    border: 1px solid rgba(245,200,66,.3);
+    color: var(--gold);
+    font-size: .78rem; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase;
+    border-radius: 50px; padding: 5px 16px; margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.6rem, 7vw, 5.5rem);
+    font-weight: 900; line-height: 1.06;
+    margin-bottom: 20px;
+    color: var(--white);
+  }
+  .hero h1 em { color: var(--gold); font-style: normal; }
+  .hero p {
+    max-width: 540px; margin: 0 auto 36px;
+    color: var(--muted); font-size: 1.1rem; line-height: 1.65;
+  }
+  .hero-ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--gold);
+    color: var(--navy);
+    border: none; border-radius: 50px;
+    padding: 14px 32px; font-weight: 700; font-size: 1rem;
+    cursor: none; transition: background .2s, transform .15s;
+  }
+  .btn-primary:hover { background: #e0b530; transform: scale(1.04); }
+  .btn-outline {
+    background: transparent;
+    color: var(--white);
+    border: 1.5px solid rgba(240,238,232,.25);
+    border-radius: 50px;
+    padding: 14px 32px; font-weight: 600; font-size: 1rem;
+    cursor: none; transition: border-color .2s, color .2s, transform .15s;
+  }
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold); transform: scale(1.04); }
+
+  /* ── Stats strip ── */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 28px 40px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    margin-bottom: 64px;
+  }
+  .stat { text-align: center; padding: 4px 8px; }
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 900; color: var(--gold);
+    display: block; white-space: nowrap;
+  }
+  .stat-label { font-size: .8rem; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+  @media (max-width: 500px) {
+    .stats-strip { grid-template-columns: repeat(2,1fr); gap: 20px 0; padding: 24px 16px; }
+  }
+
+  /* ── Section ── */
+  section { padding: 0 24px 72px; max-width: 1200px; margin: 0 auto; }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 32px; gap: 16px; flex-wrap: wrap;
+  }
+  .section-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem; font-weight: 900;
+  }
+  .section-header h2 span { color: var(--gold); }
+
+  /* ── Filter chips ── */
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 28px; }
+  .chip {
+    background: var(--navy-card);
+    border: 1.5px solid rgba(255,255,255,.1);
+    color: var(--muted);
+    border-radius: 50px; padding: 6px 16px;
+    font-size: .82rem; font-weight: 500;
+    cursor: none; transition: all .2s;
+  }
+  .chip:hover, .chip.active {
+    background: rgba(245,200,66,.12);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* ── Trick Cards ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 22px;
+  }
+  .trick-card {
+    background: var(--navy-card);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: transform .22s ease, border-color .22s, box-shadow .22s;
+    cursor: none;
+  }
+  .trick-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(245,200,66,.35);
+    box-shadow: 0 16px 48px rgba(0,0,0,.45), 0 0 0 1px rgba(245,200,66,.1);
+  }
+  .card-thumb {
+    width: 100%; aspect-ratio: 16/9;
+    background: var(--navy-mid);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 3rem; position: relative; overflow: hidden;
+  }
+  .card-thumb.has-video::after {
+    content: '▶';
+    position: absolute;
+    width: 44px; height: 44px;
+    background: rgba(232,39,107,.9);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; color: #fff;
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    transition: transform .2s;
+  }
+  .trick-card:hover .card-thumb.has-video::after { transform: translate(-50%,-50%) scale(1.12); }
+  .card-body { padding: 18px 20px 20px; }
+  .card-meta {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .category-badge {
+    font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    background: rgba(245,200,66,.1); color: var(--gold);
+    border-radius: 50px; padding: 3px 10px;
+  }
+  .stars { color: var(--gold); font-size: .85rem; letter-spacing: 1px; }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem; font-weight: 700;
+    margin-bottom: 8px; line-height: 1.3;
+  }
+  .card-desc { font-size: .85rem; color: var(--muted); line-height: 1.55; margin-bottom: 14px; }
+  .card-author {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .78rem; color: var(--muted);
+  }
+  .avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; font-weight: 700; color: var(--navy);
+    flex-shrink: 0;
+  }
+  .card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    font-size: .8rem; color: var(--muted);
+  }
+  .card-footer .like-btn {
+    background: none; border: none; color: var(--muted);
+    cursor: none; font-size: .8rem;
+    display: flex; align-items: center; gap: 4px;
+    transition: color .2s;
+  }
+  .card-footer .like-btn:hover { color: var(--magenta); }
+
+  /* ── Upload Section ── */
+  .upload-section {
+    background: linear-gradient(135deg, var(--navy-card) 0%, #1a2f45 100%);
+    border: 1px solid rgba(245,200,66,.2);
+    border-radius: 24px;
+    padding: 52px 40px;
+    text-align: center;
+    position: relative; overflow: hidden;
+    max-width: 1200px; margin: 0 auto 72px; width: calc(100% - 48px);
+  }
+  .upload-section::before {
+    content: '✦';
+    position: absolute; font-size: 18rem; opacity: .03;
+    top: -40px; right: -20px; color: var(--gold);
+    pointer-events: none; line-height: 1;
+  }
+  .upload-section h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem; font-weight: 900; margin-bottom: 14px;
+  }
+  .upload-section h2 span { color: var(--gold); }
+  .upload-section p { color: var(--muted); max-width: 480px; margin: 0 auto 32px; line-height: 1.65; }
+  .upload-form {
+    display: flex; flex-direction: column; gap: 14px;
+    max-width: 540px; margin: 0 auto; text-align: left;
+  }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  label { font-size: .8rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: 5px; letter-spacing: .04em; text-transform: uppercase; }
+  input, textarea, select {
+    width: 100%;
+    background: rgba(255,255,255,.05);
+    border: 1.5px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    color: var(--white); font-family: 'DM Sans', sans-serif;
+    font-size: .9rem; padding: 11px 14px;
+    outline: none; transition: border-color .2s;
+    cursor: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--gold); }
+  select option { background: var(--navy-card); }
+  textarea { min-height: 100px; resize: vertical; }
+  .dropzone {
+    border: 2px dashed rgba(245,200,66,.3);
+    border-radius: 12px; padding: 28px 20px;
+    text-align: center; cursor: none;
+    transition: border-color .2s, background .2s;
+  }
+  .dropzone:hover { border-color: var(--gold); background: rgba(245,200,66,.04); }
+  .dropzone-icon { font-size: 2rem; margin-bottom: 8px; }
+  .dropzone p { font-size: .85rem; color: var(--muted); }
+  .dropzone p strong { color: var(--gold); }
+  .difficulty-stars { display: flex; gap: 8px; }
+  .diff-star {
+    background: none; border: 1.5px solid rgba(245,200,66,.3);
+    border-radius: 50px; padding: 6px 14px;
+    color: var(--muted); font-size: .8rem; cursor: none;
+    transition: all .2s;
+  }
+  .diff-star:hover, .diff-star.selected {
+    background: rgba(245,200,66,.12); border-color: var(--gold); color: var(--gold);
+  }
+  .btn-submit {
+    background: var(--magenta); color: #fff;
+    border: none; border-radius: 50px;
+    padding: 14px 36px; font-weight: 700; font-size: 1rem;
+    cursor: none; transition: background .2s, transform .15s;
+    width: 100%; margin-top: 4px;
+  }
+  .btn-submit:hover { background: #c71f5a; transform: scale(1.02); }
+
+  /* ── How it works ── */
+  .how-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+  }
+  .how-card {
+    background: var(--navy-card);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+  }
+  .how-icon { font-size: 2.2rem; margin-bottom: 14px; }
+  .how-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+  .how-card p { font-size: .85rem; color: var(--muted); line-height: 1.6; }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid rgba(255,255,255,.07);
+    padding: 32px 24px;
+    text-align: center;
+    color: var(--muted); font-size: .82rem;
+  }
+  footer a { color: var(--gold); text-decoration: none; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.75); backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--navy-card);
+    border: 1px solid rgba(245,200,66,.2);
+    border-radius: 20px; padding: 36px 32px;
+    max-width: 560px; width: 100%; position: relative;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-close {
+    position: absolute; top: 16px; right: 16px;
+    background: none; border: none; color: var(--muted);
+    font-size: 1.4rem; cursor: none; line-height: 1;
+  }
+  .modal h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem; margin-bottom: 8px;
+  }
+  .modal .trick-detail-category { color: var(--gold); font-size: .8rem; margin-bottom: 16px; text-transform: uppercase; letter-spacing: .08em; }
+  .steps { counter-reset: steps; display: flex; flex-direction: column; gap: 14px; margin: 16px 0; }
+  .step {
+    display: flex; gap: 14px; align-items: flex-start;
+    counter-increment: steps;
+  }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--gold); color: var(--navy);
+    font-weight: 700; font-size: .85rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .step p { color: var(--muted); font-size: .9rem; line-height: 1.6; }
+
+  /* ── Share bar ── */
+  .share-bar {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 20px; padding-top: 18px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    flex-wrap: wrap;
+  }
+  .share-label { font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-right: 2px; }
+  .share-url-box {
+    flex: 1; min-width: 0;
+    background: rgba(255,255,255,.05);
+    border: 1.5px solid rgba(255,255,255,.1);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: .78rem; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-family: monospace;
+    cursor: text;
+  }
+  .btn-copy {
+    background: rgba(245,200,66,.12);
+    border: 1.5px solid rgba(245,200,66,.3);
+    color: var(--gold);
+    border-radius: 8px; padding: 8px 14px;
+    font-size: .8rem; font-weight: 600;
+    cursor: none; transition: all .2s; white-space: nowrap; flex-shrink: 0;
+  }
+  .btn-copy:hover { background: rgba(245,200,66,.22); border-color: var(--gold); }
+  .btn-copy.copied { background: rgba(62,207,142,.12); border-color: var(--green); color: var(--green); }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    nav ul { display: none; }
+    .form-row { grid-template-columns: 1fr; }
+    .upload-section { padding: 36px 22px; }
+    .stats-strip { gap: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Magic<span>Hub</span> ✦</div>
+  <ul>
+    <li><a href="#tricks">Browse</a></li>
+    <li><a href="#upload">Upload</a></li>
+    <li><a href="#how">How it Works</a></li>
+  </ul>
+  <button class="btn-upload-nav" onclick="document.getElementById('upload').scrollIntoView({behavior:'smooth'})">+ Share a Trick</button>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-eyebrow">✦ For young magicians everywhere ✦</div>
+  <h1>Where Kids Learn <em>Real Magic</em><br>— and Share It</h1>
+  <p>Browse hundreds of easy magic tricks with step-by-step instructions and video demos. Then upload your own for the world to see!</p>
+  <div class="hero-ctas">
+    <button class="btn-primary" onclick="document.getElementById('tricks').scrollIntoView({behavior:'smooth'})">✦ Browse Tricks</button>
+    <button class="btn-outline" onclick="document.getElementById('upload').scrollIntoView({behavior:'smooth'})">Upload Your Own</button>
+  </div>
+</header>
+
+<!-- STATS -->
+<div class="stats-strip">
+  <div class="stat"><span class="stat-num" id="s1">0</span><div class="stat-label">Magic Tricks</div></div>
+  <div class="stat"><span class="stat-num" id="s2">0</span><div class="stat-label">Young Magicians</div></div>
+  <div class="stat"><span class="stat-num" id="s3">0</span><div class="stat-label">Video Demos</div></div>
+  <div class="stat"><span class="stat-num" id="s4">0</span><div class="stat-label">Countries</div></div>
+</div>
+
+<!-- TRICK BROWSER -->
+<section id="tricks">
+  <div class="section-header">
+    <h2>Browse <span>Tricks</span></h2>
+  </div>
+  <div class="chips" id="filterChips">
+    <div class="chip active" data-cat="all">All</div>
+    <div class="chip" data-cat="cards">Cards</div>
+    <div class="chip" data-cat="coins">Coins</div>
+    <div class="chip" data-cat="mentalism">Mind Reading</div>
+    <div class="chip" data-cat="objects">Everyday Objects</div>
+    <div class="chip" data-cat="numbers">Numbers</div>
+  </div>
+  <div class="cards-grid" id="cardsGrid"></div>
+</section>
+
+<!-- UPLOAD SECTION -->
+<div class="upload-section" id="upload">
+  <h2>Share Your <span>Magic</span></h2>
+  <p>Discovered a cool trick? Teach the world! Upload your instructions and optionally add a video demo.</p>
+  <div class="upload-form" id="uploadForm">
+    <div>
+      <label>Trick Name</label>
+      <input type="text" id="trickName" placeholder="e.g. The Disappearing Coin">
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Category</label>
+        <select id="trickCat">
+          <option value="">Select…</option>
+          <option value="cards">Cards</option>
+          <option value="coins">Coins</option>
+          <option value="mentalism">Mind Reading</option>
+          <option value="objects">Everyday Objects</option>
+          <option value="numbers">Numbers</option>
+        </select>
+      </div>
+      <div>
+        <label>What You Need</label>
+        <input type="text" id="trickProps" placeholder="e.g. A coin, a cup">
+      </div>
+    </div>
+    <div>
+      <label>How to Do It (Step by Step)</label>
+      <textarea id="trickInstructions" placeholder="Step 1: …&#10;Step 2: …&#10;Step 3: …"></textarea>
+    </div>
+    <div>
+      <label>Difficulty</label>
+      <div class="difficulty-stars" id="diffStars">
+        <button class="diff-star" data-d="1">⭐ Easy</button>
+        <button class="diff-star" data-d="2">⭐⭐ Medium</button>
+        <button class="diff-star" data-d="3">⭐⭐⭐ Hard</button>
+      </div>
+    </div>
+    <div>
+      <label>Video Link (Optional)</label>
+      <input type="url" id="trickVideo" placeholder="https://youtube.com/...">
+    </div>
+    <div>
+      <label>Your Name / Magician Alias</label>
+      <input type="text" id="trickAuthor" placeholder="e.g. The Amazing Alex">
+    </div>
+    <div class="dropzone" id="dropzone">
+      <div class="dropzone-icon">🎩</div>
+      <p><strong>Drop a photo here</strong> or click to upload</p>
+      <p style="margin-top:4px; font-size:.75rem">PNG, JPG up to 5MB</p>
+    </div>
+    <button class="btn-submit" onclick="submitTrick()">✦ Publish My Trick</button>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-header"><h2>How It <span>Works</span></h2></div>
+  <div class="how-grid">
+    <div class="how-card">
+      <div class="how-icon">🔍</div>
+      <h3>Browse & Learn</h3>
+      <p>Filter tricks by type or difficulty. Every trick has clear step-by-step instructions kids can actually follow.</p>
+    </div>
+    <div class="how-card">
+      <div class="how-icon">🎬</div>
+      <h3>Watch the Demo</h3>
+      <p>Many tricks include a video so you can see exactly how the magic is done before you try it yourself.</p>
+    </div>
+    <div class="how-card">
+      <div class="how-icon">📝</div>
+      <h3>Write Your Trick</h3>
+      <p>Got a trick to share? Fill in the name, steps, and what props you need. Super quick — takes 2 minutes.</p>
+    </div>
+    <div class="how-card">
+      <div class="how-icon">🌟</div>
+      <h3>Become Famous</h3>
+      <p>Your trick goes live and other kids can like, share, and try it. Top tricks get featured on the homepage!</p>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalContent">
+    <button class="modal-close" onclick="document.getElementById('modalOverlay').classList.remove('open')">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p>✦ MagicHub — A place for young magicians to learn &amp; share ✦</p>
+  <p style="margin-top:8px">Built with ❤️ · <a href="#">Privacy</a> · <a href="#">Guidelines</a></p>
+</footer>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────
+const GH_REPO  = 'blockblock2/Magic-tricks';
+const GH_TOKEN = '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';
+const GH_API   = `https://api.github.com/repos/${GH_REPO}`;
+const IS_ADMIN = new URLSearchParams(location.search).has('admin');
+const HEADERS  = { 'Authorization': `Bearer ${GH_TOKEN}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' };
+
+// ── Cursor sparkle (mouse/trackpad only, not touch) ────────────
+const cur = document.getElementById('cursor');
+const colors = ['#f5c842','#e8276b','#3ecf8e','#fff'];
+const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+if (isTouch) {
+  cur.style.display = 'none';
+  document.body.style.cursor = 'auto';
+}
+if (!isTouch) {
+  document.addEventListener('mousemove', e => {
+    cur.style.left = e.clientX + 'px'; cur.style.top = e.clientY + 'px';
+    if (Math.random() < .35) spawnSparkle(e.clientX, e.clientY);
+  });
+}
+function spawnSparkle(x, y) {
+  const s = document.createElement('div');
+  s.className = 'sparkle';
+  s.style.left = (x + (Math.random()-0.5)*16) + 'px';
+  s.style.top  = (y + (Math.random()-0.5)*16) + 'px';
+  s.style.background = colors[Math.floor(Math.random()*colors.length)];
+  s.style.width = s.style.height = (Math.random()*6+4) + 'px';
+  document.body.appendChild(s);
+  setTimeout(() => s.remove(), 650);
+}
+
+// ── State ───────────────────────────────────────────────────────
+let localTricks = [];
+let activeFilter = 'all';
+
+// ── Parse a GitHub Issue into a trick object ────────────────────
+function issueToTrick(issue) {
+  let data = {};
+  try {
+    // Body is JSON stored between ```json ... ``` fences
+    const match = issue.body && issue.body.match(/```json\n([\s\S]*?)\n```/);
+    if (match) data = JSON.parse(match[1]);
+  } catch(e) {}
+  const catColors = {cards:'#e8276b',coins:'#f5c842',mentalism:'#3ecf8e',objects:'#8fa0b4',numbers:'#a78bfa'};
+  return {
+    issueNumber: issue.number,
+    id: issue.number,
+    title: issue.title || 'Untitled',
+    cat: data.cat || 'objects',
+    emoji: data.emoji || '✨',
+    difficulty: data.difficulty || 1,
+    stars: data.stars || '⭐',
+    desc: data.desc || '',
+    props: data.props || 'None listed',
+    steps: data.steps || [],
+    author: data.author || 'Anonymous',
+    authorColor: catColors[data.cat] || '#f5c842',
+    hasVideo: !!(data.video),
+    video: data.video || '',
+    likes: issue.reactions?.['+1'] || 0,
+  };
+}
+
+// ── Load tricks from GitHub Issues ─────────────────────────────
+async function loadTricks() {
+  const grid = document.getElementById('cardsGrid');
+  grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:64px 24px;color:var(--muted)">
+    <div style="font-size:2rem;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">✦</div>
+    <p style="margin-top:8px">Loading tricks…</p>
+  </div>`;
+  try {
+    const res = await fetch(`${GH_API}/issues?state=open&labels=trick&per_page=100`, { headers: HEADERS });
+    if (!res.ok) throw new Error(res.status);
+    const issues = await res.json();
+    localTricks = issues.map(issueToTrick);
+    renderCards(activeFilter);
+    updateCounters();
+  } catch(e) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:64px 24px;color:var(--muted)">
+      <div style="font-size:2.5rem;margin-bottom:12px">⚠️</div>
+      <p>Couldn't load tricks. Check your connection and try refreshing.</p>
+    </div>`;
+  }
+}
+
+// ── Render cards ──────────────────────────────────────────────
+function renderCards(filter='all') {
+  const grid = document.getElementById('cardsGrid');
+  const filtered = filter === 'all' ? localTricks : localTricks.filter(t => t.cat === filter);
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:64px 24px;color:var(--muted)">
+      <div style="font-size:3rem;margin-bottom:16px">🎩</div>
+      <div style="font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--white);margin-bottom:8px">No tricks yet!</div>
+      <p style="font-size:.9rem;line-height:1.6">Be the first to share one — scroll down and upload your trick.</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(t => `
+    <div class="trick-card" onclick="openModal(${t.id})">
+      <div class="card-thumb${t.hasVideo?' has-video':''}">${t.emoji}</div>
+      <div class="card-body">
+        <div class="card-meta">
+          <span class="category-badge">${catLabel(t.cat)}</span>
+          <span class="stars">${t.stars}</span>
+        </div>
+        <div class="card-title">${t.title}</div>
+        <div class="card-desc">${t.desc}</div>
+        <div class="card-author">
+          <div class="avatar" style="background:${t.authorColor}">${t.author[0]}</div>
+          ${t.author}${t.hasVideo ? ' · <span style="color:var(--magenta)">▶ Video</span>':''}
+        </div>
+      </div>
+      <div class="card-footer">
+        <span>Props: ${t.props.split(',')[0]}${t.props.includes(',')?' + more':''}</span>
+        <span style="color:var(--muted);font-size:.78rem">❤ ${t.likes}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function catLabel(c) {
+  return {cards:'Cards',coins:'Coins',mentalism:'Mind Reading',objects:'Objects',numbers:'Numbers'}[c]||c;
+}
+
+// ── Filter chips ──────────────────────────────────────────────
+document.getElementById('filterChips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  activeFilter = chip.dataset.cat;
+  renderCards(activeFilter);
+});
+
+// ── Modal ──────────────────────────────────────────────────────
+function openModal(id) {
+  const t = localTricks.find(x=>x.id===id);
+  if (!t) return;
+
+  const deleteBtn = IS_ADMIN ? `
+    <button onclick="deleteTrick(${t.issueNumber}, this)" style="
+      margin-top:20px; width:100%; padding:11px;
+      background:rgba(232,39,107,.1); border:1.5px solid rgba(232,39,107,.3);
+      color:var(--magenta); border-radius:10px; font-weight:600; font-size:.88rem;
+      cursor:pointer; transition:all .2s;
+    " onmouseover="this.style.background='rgba(232,39,107,.22)'" onmouseout="this.style.background='rgba(232,39,107,.1)'">
+      🗑 Remove This Trick
+    </button>` : '';
+
+  const videoBlock = t.hasVideo ? `
+    <a href="${t.video}" target="_blank" rel="noopener" style="
+      display:flex;align-items:center;gap:12px;margin-top:18px;
+      background:rgba(232,39,107,.1);border:1.5px solid rgba(232,39,107,.2);
+      border-radius:10px;padding:14px 16px;text-decoration:none;color:inherit;
+    ">
+      <span style="font-size:1.6rem">▶</span>
+      <div>
+        <div style="font-weight:600;margin-bottom:2px">Watch Video Demo</div>
+        <p style="font-size:.78rem;color:var(--muted);word-break:break-all">${t.video}</p>
+      </div>
+    </a>` : '';
+
+  document.getElementById('modalBody').innerHTML = `
+    <div style="font-size:3rem;margin-bottom:12px">${t.emoji}</div>
+    <h2>${t.title}</h2>
+    <div class="trick-detail-category">${catLabel(t.cat)} · ${t.stars} · By ${t.author}</div>
+    <p style="color:var(--muted);font-size:.9rem;line-height:1.6;margin-bottom:14px">${t.desc}</p>
+    <div style="background:rgba(245,200,66,.07);border-radius:10px;padding:12px 16px;margin-bottom:18px">
+      <span style="font-size:.78rem;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.06em">What you need</span>
+      <p style="margin-top:4px;font-size:.9rem;color:var(--muted)">${t.props}</p>
+    </div>
+    <div style="font-size:.78rem;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Step by Step</div>
+    <div class="steps">${t.steps.map((s,i)=>`<div class="step"><div class="step-num">${i+1}</div><p>${s}</p></div>`).join('')}</div>
+    ${videoBlock}
+    ${deleteBtn}
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+
+  // update URL hash for shareability
+  history.replaceState(null,'',`${location.pathname}${location.search}#trick-${t.id}`);
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('open');
+    history.replaceState(null,'',`${location.pathname}${location.search}`);
+  }
+}
+
+// ── Delete (admin only) ─────────────────────────────────────────
+async function deleteTrick(issueNumber, btn) {
+  if (!confirm('Remove this trick? This cannot be undone.')) return;
+  btn.textContent = 'Removing…'; btn.disabled = true;
+  try {
+    const res = await fetch(`${GH_API}/issues/${issueNumber}`, {
+      method: 'PATCH',
+      headers: HEADERS,
+      body: JSON.stringify({ state: 'closed' })
+    });
+    if (!res.ok) throw new Error();
+    localTricks = localTricks.filter(t => t.issueNumber !== issueNumber);
+    document.getElementById('modalOverlay').classList.remove('open');
+    renderCards(activeFilter);
+    updateCounters();
+  } catch(e) {
+    btn.textContent = '🗑 Remove This Trick'; btn.disabled = false;
+    alert('Could not remove trick. Try again.');
+  }
+}
+
+// ── Upload → GitHub Issue ───────────────────────────────────────
+let selectedDiff = 1;
+document.getElementById('diffStars').addEventListener('click', e => {
+  const btn = e.target.closest('.diff-star');
+  if (!btn) return;
+  selectedDiff = +btn.dataset.d;
+  document.querySelectorAll('.diff-star').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+});
+
+const catEmojis = {cards:'🃏',coins:'🪙',mentalism:'🧠',objects:'✏️',numbers:'🔢'};
+
+async function submitTrick() {
+  const name  = document.getElementById('trickName').value.trim();
+  const cat   = document.getElementById('trickCat').value;
+  const ins   = document.getElementById('trickInstructions').value.trim();
+  const auth  = document.getElementById('trickAuthor').value.trim() || 'Anonymous';
+  const vid   = document.getElementById('trickVideo').value.trim();
+  const props = document.getElementById('trickProps').value.trim() || 'None listed';
+  if (!name || !cat || !ins) { alert('Please fill in the trick name, category, and instructions!'); return; }
+
+  const stepsArr = ins.split('\n').filter(Boolean);
+  const stars = ['','⭐','⭐⭐','⭐⭐⭐'][selectedDiff];
+  const emoji = catEmojis[cat] || '✨';
+  const desc  = stepsArr[0].replace(/^step\s*\d+[:\-.]?\s*/i,'').slice(0,120) + (stepsArr[0].length > 120 ? '…' : '');
+
+  const payload = { cat, emoji, difficulty: selectedDiff, stars, desc, props, steps: stepsArr, author: auth, video: vid };
+
+  const submitBtn = document.querySelector('.btn-submit');
+  submitBtn.textContent = '✦ Publishing…'; submitBtn.disabled = true;
+
+  try {
+    const res = await fetch(`${GH_API}/issues`, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify({
+        title: name,
+        body: `Submitted by: **${auth}**\n\n\`\`\`json\n${JSON.stringify(payload, null, 2)}\n\`\`\``,
+        labels: ['trick']
+      })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const issue = await res.json();
+    const newTrick = issueToTrick(issue);
+    localTricks.unshift(newTrick);
+    renderCards(activeFilter);
+    updateCounters();
+
+    // Clear form
+    ['trickName','trickCat','trickInstructions','trickAuthor','trickVideo','trickProps'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.querySelectorAll('.diff-star').forEach(b=>b.classList.remove('selected'));
+    selectedDiff = 1;
+
+    document.getElementById('tricks').scrollIntoView({behavior:'smooth'});
+    setTimeout(() => openModal(newTrick.id), 500);
+  } catch(e) {
+    alert('Could not save your trick. Please try again.');
+  } finally {
+    submitBtn.textContent = '✦ Publish My Trick'; submitBtn.disabled = false;
+  }
+}
+
+// ── Counters ──────────────────────────────────────────────────
+function animateCounter(id, target, from=0) {
+  const el = document.getElementById(id);
+  const dur = 1200, step = 16;
+  let current = from;
+  const inc = (target - from) / (dur / step);
+  const t = setInterval(() => {
+    current += inc;
+    if (current >= target) { current = target; clearInterval(t); }
+    el.textContent = Math.round(current).toLocaleString();
+  }, step);
+}
+function updateCounters() {
+  document.getElementById('s1').textContent = localTricks.length.toLocaleString();
+  document.getElementById('s3').textContent = localTricks.filter(t=>t.hasVideo).length.toLocaleString();
+}
+function runCounters() {
+  animateCounter('s1', localTricks.length);
+  animateCounter('s3', localTricks.filter(t=>t.hasVideo).length);
+}
+const obs = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) { runCounters(); obs.disconnect(); }
+}, {threshold:.4});
+obs.observe(document.querySelector('.stats-strip'));
+
+// ── Deep-link on load ─────────────────────────────────────────
+function checkHash() {
+  const m = location.hash.match(/^#trick-(\d+)$/);
+  if (m) {
+    const id = parseInt(m[1]);
+    if (localTricks.find(t=>t.id===id)) openModal(id);
+  }
+}
+
+// ── Ensure 'trick' label exists, then load ─────────────────────
+async function ensureLabelAndLoad() {
+  // Try to create the label (no-op if it already exists)
+  await fetch(`${GH_API}/labels`, {
+    method: 'POST', headers: HEADERS,
+    body: JSON.stringify({ name: 'trick', color: 'f5c842', description: 'A magic trick submission' })
+  }).catch(()=>{});
+  await loadTricks();
+  checkHash();
+}
+
+ensureLabelAndLoad();
+</script>
+</body>
+</html>
