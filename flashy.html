@@ -1292,7 +1292,7 @@ function refreshMarkers(){
 function makePopup(inv,flashed){
   const sl={ok:'Active ✅',destroyed:'Destroyed ❌',damaged:'Damaged ⚠️',hidden:'Hidden 🙈'};
   const igTag = inv.id;
-  const mapsUrl = `https://maps.apple.com/?daddr=${inv.lat},${inv.lng}&dirflg=w`;
+  const mapsUrl = `https://maps.apple.com/?daddr=${inv.lat},${inv.lng}&q=${encodeURIComponent(inv.id)}&dirflg=w`;
   return `<div>
     <div class="popup-id">${inv.id}</div>
     <div class="popup-status">${inv.cityName} · ${sl[inv.status]||inv.status} · ${inv.points}pts</div>
