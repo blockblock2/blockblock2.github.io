@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📅 PixelCal — Your Events, Your Style</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --px: 4px;
+      --retro-bg: #1a1a2e;
+      --retro-grid: #16213e;
+      --retro-bright: #0f3460;
+      --retro-accent: #e94560;
+      --retro-text: #eaeaea;
+      --retro-alt: #a8dadc;
+      --retro-warn: #f1faee;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: linear-gradient(135deg, var(--retro-bg) 0%, #0f2027 100%);
+      color: var(--retro-text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ============= HEADER ============= */
+    header {
+      background: var(--retro-grid);
+      border-bottom: 8px solid var(--retro-accent);
+      padding: calc(var(--px) * 4);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 8px 0 rgba(233, 69, 96, 0.3);
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-shadow: 2px 2px 0 var(--retro-accent);
+    }
+
+    .header-controls {
+      display: flex;
+      gap: calc(var(--px) * 3);
+      align-items: center;
+    }
+
+    button {
+      background: var(--retro-bright);
+      border: 3px solid var(--retro-accent);
+      color: var(--retro-text);
+      padding: calc(var(--px) * 2) calc(var(--px) * 3);
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.1s;
+      box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+    }
+
+    button:hover {
+      background: var(--retro-accent);
+      color: var(--retro-bg);
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 rgba(0,0,0,0.3);
+    }
+
+    button:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 rgba(0,0,0,0.3);
+    }
+
+    button.logout { background: #6a0572; border-color: #ff006e; }
+    button.logout:hover { background: #ff006e; color: white; }
+
+    select {
+      background: var(--retro-bright);
+      border: 3px solid var(--retro-accent);
+      color: var(--retro-text);
+      padding: calc(var(--px) * 1.5) calc(var(--px) * 2);
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* ============= LOGIN SCREEN ============= */
+    .login-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(26, 26, 46, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .login-box {
+      background: var(--retro-grid);
+      border: 6px solid var(--retro-accent);
+      padding: calc(var(--px) * 5);
+      max-width: 400px;
+      box-shadow: 0 0 30px rgba(233, 69, 96, 0.5);
+    }
+
+    .login-box h1 {
+      font-size: 20px;
+      margin-bottom: calc(var(--px) * 3);
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    .form-group {
+      margin-bottom: calc(var(--px) * 3);
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: var(--px);
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: calc(var(--px) * 2);
+      background: var(--retro-bg);
+      border: 3px solid var(--retro-alt);
+      color: var(--retro-text);
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--retro-accent);
+      box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.3);
+    }
+
+    .login-error {
+      background: #8b0000;
+      border-left: 4px solid #ff4444;
+      padding: calc(var(--px) * 2);
+      margin-bottom: calc(var(--px) * 3);
+      color: #ffaaaa;
+      font-size: 13px;
+    }
+
+    .login-box button {
+      width: 100%;
+      margin-top: calc(var(--px) * 2);
+    }
+
+    .login-hint {
+      text-align: center;
+      margin-top: calc(var(--px) * 3);
+      font-size: 12px;
+      color: var(--retro-alt);
+    }
+
+    /* ============= MAIN CONTENT ============= */
+    .container {
+      max-width: 1400px;
+      margin: calc(var(--px) * 4) auto;
+      padding: 0 calc(var(--px) * 2);
+    }
+
+    .controls-bar {
+      background: var(--retro-grid);
+      border: 3px solid var(--retro-accent);
+      padding: calc(var(--px) * 3);
+      margin-bottom: calc(var(--px) * 4);
+      display: flex;
+      gap: calc(var(--px) * 3);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .calendar-links {
+      display: flex;
+      gap: calc(var(--px) * 2);
+      flex-wrap: wrap;
+    }
+
+    .calendar-links a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: calc(var(--px) * 1.5) calc(var(--px) * 2);
+      background: var(--retro-bright);
+      border: 2px solid var(--retro-alt);
+      color: var(--retro-text);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: bold;
+      transition: all 0.1s;
+      box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+    }
+
+    .calendar-links a:hover {
+      background: var(--retro-alt);
+      color: var(--retro-bg);
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+    }
+
+    /* ============= THEME SELECTOR ============= */
+    .theme-selector {
+      display: flex;
+      gap: var(--px);
+      flex-wrap: wrap;
+    }
+
+    .theme-btn {
+      padding: calc(var(--px) * 1.5) calc(var(--px) * 2);
+      background: var(--retro-bright);
+      border: 2px solid var(--retro-accent);
+      color: var(--retro-text);
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.1s;
+    }
+
+    .theme-btn.active {
+      background: var(--retro-accent);
+      color: var(--retro-bg);
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    }
+
+    /* ============= CALENDAR GRID ============= */
+    .calendar-wrapper {
+      background: var(--retro-grid);
+      border: 4px solid var(--retro-accent);
+      padding: calc(var(--px) * 3);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: calc(var(--px) * 3);
+    }
+
+    .calendar-header h2 {
+      font-size: 24px;
+      letter-spacing: 2px;
+      text-shadow: 2px 2px 0 var(--retro-accent);
+    }
+
+    .nav-arrows {
+      display: flex;
+      gap: var(--px);
+    }
+
+    .nav-arrows button {
+      padding: calc(var(--px) * 1.5) calc(var(--px) * 2);
+      font-size: 18px;
+    }
+
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: var(--px);
+      margin-bottom: calc(var(--px) * 2);
+    }
+
+    .weekday {
+      text-align: center;
+      font-weight: bold;
+      padding: var(--px);
+      background: var(--retro-bright);
+      border: 2px solid var(--retro-alt);
+      font-size: 13px;
+    }
+
+    .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: var(--px);
+    }
+
+    .day {
+      aspect-ratio: 1;
+      background: var(--retro-bright);
+      border: 3px solid var(--retro-bright);
+      padding: calc(var(--px) * 1.5);
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      min-height: 80px;
+    }
+
+    .day:hover {
+      background: var(--retro-accent);
+      transform: translate(-2px, -2px);
+      box-shadow: 4px 4px 0 rgba(0,0,0,0.4);
+    }
+
+    .day.other-month {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .day.other-month:hover {
+      background: var(--retro-bright);
+      transform: none;
+      box-shadow: none;
+    }
+
+    .day.today {
+      border-color: var(--retro-accent);
+      background: rgba(233, 69, 96, 0.15);
+    }
+
+    .day-number {
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: calc(var(--px) * 0.5);
+    }
+
+    .day-events {
+      font-size: 10px;
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .day-event {
+      background: var(--retro-accent);
+      color: var(--retro-bg);
+      padding: 1px 2px;
+      border-radius: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: bold;
+    }
+
+    /* ============= EVENT MODAL ============= */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 5000;
+      animation: fadeIn 0.2s;
+    }
+
+    .modal.show { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: var(--retro-grid);
+      border: 6px solid var(--retro-accent);
+      padding: calc(var(--px) * 4);
+      max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 0 40px rgba(233, 69, 96, 0.6);
+      position: relative;
+      animation: slideUp 0.3s;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: calc(var(--px) * 2);
+      right: calc(var(--px) * 2);
+      background: transparent;
+      border: none;
+      color: var(--retro-accent);
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: none;
+    }
+
+    .modal-close:hover {
+      transform: scale(1.2);
+    }
+
+    .event-item {
+      background: var(--retro-bright);
+      border: 3px solid var(--retro-alt);
+      padding: calc(var(--px) * 2);
+      margin-bottom: calc(var(--px) * 2);
+    }
+
+    .event-name {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: var(--px);
+      color: var(--retro-accent);
+    }
+
+    .event-details {
+      font-size: 13px;
+      color: var(--retro-alt);
+      line-height: 1.6;
+    }
+
+    .event-details strong { color: var(--retro-text); }
+
+    /* ============= ANIMATIONS ============= */
+    .critter {
+      position: fixed;
+      font-size: 32px;
+      pointer-events: none;
+      z-index: 9000;
+      animation: critterWalk 3s linear forwards;
+    }
+
+    @keyframes critterWalk {
+      0% { left: -50px; opacity: 1; }
+      100% { left: 100vw; opacity: 0.3; }
+    }
+
+    .confetti {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9000;
+      animation: confettiFall 2s ease-out forwards;
+    }
+
+    @keyframes confettiFall {
+      to {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    .dancer {
+      animation: dance 0.6s ease-in-out;
+    }
+
+    @keyframes dance {
+      0%, 100% { transform: translateY(0) rotateZ(0deg); }
+      25% { transform: translateY(-8px) rotateZ(-5deg); }
+      75% { transform: translateY(-8px) rotateZ(5deg); }
+    }
+
+    /* ============= RESPONSIVE ============= */
+    @media (max-width: 768px) {
+      .controls-bar { flex-direction: column; align-items: flex-start; }
+      .calendar-links { flex-direction: column; width: 100%; }
+      .day { min-height: 60px; font-size: 12px; }
+      .day-number { font-size: 12px; }
+      .day-event { font-size: 9px; }
+    }
+
+    /* ============= THEME STYLES ============= */
+    body.theme-ocean {
+      --retro-bg: #0a1a2e;
+      --retro-grid: #0f3460;
+      --retro-bright: #16213e;
+      --retro-accent: #00d4ff;
+      --retro-alt: #1dd1a1;
+      --retro-warn: #ffd89b;
+    }
+
+    body.theme-space {
+      --retro-bg: #0b0014;
+      --retro-grid: #1a0033;
+      --retro-bright: #2d0052;
+      --retro-accent: #ff00ff;
+      --retro-alt: #00ffff;
+      --retro-warn: #ffff00;
+    }
+
+    body.theme-cottage {
+      --retro-bg: #fef5e7;
+      --retro-grid: #f9e79f;
+      --retro-bright: #f4d03f;
+      --retro-accent: #d35400;
+      --retro-alt: #27ae60;
+      --retro-warn: #8b4513;
+    }
+
+    body.theme-neon {
+      --retro-bg: #0d0221;
+      --retro-grid: #0f0f1e;
+      --retro-bright: #1a0033;
+      --retro-accent: #ff006e;
+      --retro-alt: #00f5ff;
+      --retro-warn: #ffbe0b;
+    }
+
+    body.theme-cats {
+      --retro-bg: #2a2a3e;
+      --retro-grid: #3d3d5c;
+      --retro-bright: #4a4a6a;
+      --retro-accent: #ff9a56;
+      --retro-alt: #ffd700;
+      --retro-warn: #ffe4e1;
+    }
+
+    /* Hide login when logged in */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body class="theme-retro">
+
+  <!-- LOGIN OVERLAY -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <h1>🔐 PIXELCAL LOGIN</h1>
+      <div id="loginError" class="login-error hidden"></div>
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="username">USERNAME</label>
+          <input type="text" id="username" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="form-group">
+          <label for="password">PASSWORD</label>
+          <input type="password" id="password">
+        </div>
+        <button type="submit">LOG IN</button>
+      </form>
+      <p class="login-hint">Same account as PlanWise</p>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <header>
+    <div class="logo">📅 PIXELCAL</div>
+    <div class="header-controls">
+      <span id="userDisplay" style="font-weight: bold;">Loading...</span>
+      <button id="logoutBtn" class="logout hidden" onclick="doLogout()">LOG OUT</button>
+      <button id="loginBtn" onclick="showLogin()" hidden>LOG IN</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="controls-bar">
+      <div style="flex: 1;">
+        <strong>EXPORT TO:</strong>
+        <div class="calendar-links">
+          <a href="https://www.iCloud.com/calendar" target="_blank">🍎 iCloud</a>
+          <a href="https://calendar.google.com" target="_blank">🔵 Google</a>
+          <a href="https://outlook.live.com/calendar" target="_blank">📧 Outlook</a>
+          <a href="https://calendar.yahoo.com" target="_blank">📍 Yahoo</a>
+          <a href="https://www.notion.so" target="_blank">✦ Notion</a>
+        </div>
+      </div>
+      <div>
+        <strong>THEME:</strong>
+        <div class="theme-selector">
+          <button class="theme-btn active" onclick="setTheme('retro')">🎮 Retro</button>
+          <button class="theme-btn" onclick="setTheme('ocean')">🌊 Ocean</button>
+          <button class="theme-btn" onclick="setTheme('space')">🌌 Space</button>
+          <button class="theme-btn" onclick="setTheme('cottage')">🌸 Cottage</button>
+          <button class="theme-btn" onclick="setTheme('neon')">🔥 Neon</button>
+          <button class="theme-btn" onclick="setTheme('cats')">🐱 Cats</button>
+        </div>
+      </div>
+      <div>
+        <strong>EVENT FX:</strong>
+        <select id="effectSelect">
+          <option value="random">🎲 Surprise Me!</option>
+          <option value="critter">🐾 Critter Walk</option>
+          <option value="confetti">🎉 Confetti</option>
+          <option value="dancer">💃 Dancer</option>
+          <option value="none">🔇 None</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="calendar-wrapper">
+      <div class="calendar-header">
+        <h2 id="monthYear">January 2025</h2>
+        <div class="nav-arrows">
+          <button onclick="prevMonth()">◀ PREV</button>
+          <button onclick="todayBtn()">TODAY</button>
+          <button onclick="nextMonth()">NEXT ▶</button>
+        </div>
+      </div>
+
+      <div class="weekdays">
+        <div class="weekday">SUN</div>
+        <div class="weekday">MON</div>
+        <div class="weekday">TUE</div>
+        <div class="weekday">WED</div>
+        <div class="weekday">THU</div>
+        <div class="weekday">FRI</div>
+        <div class="weekday">SAT</div>
+      </div>
+
+      <div class="days" id="daysContainer"></div>
+    </div>
+  </div>
+
+  <!-- EVENT MODAL -->
+  <div class="modal" id="eventModal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <h2 style="margin-bottom: 16px; color: var(--retro-accent);">EVENTS</h2>
+      <div id="eventsContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    const FIREBASE_DB = 'https://planwise-73ada-default-rtdb.firebaseio.com';
+    
+    let state = {
+      user: null,
+      currentDate: new Date(),
+      events: [],
+      theme: 'retro',
+      effectMode: 'random'
+    };
+
+    // ============= AUTH =============
+    async function sha256(text) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function fbGet(path) {
+      const r = await fetch(FIREBASE_DB + '/' + path + '.json');
+      if (!r.ok) throw new Error('Firebase error: ' + r.status);
+      return r.json();
+    }
+
+    async function autoLogin() {
+      const saved = localStorage.getItem('planwise_session');
+      if (saved) {
+        try {
+          const session = JSON.parse(saved);
+          state.user = session;
+          document.getElementById('loginOverlay').classList.add('hidden');
+          loadPlanWiseEvents();
+          updateUI();
+        } catch (e) {
+          console.warn('Session restore failed', e);
+          showLogin();
+        }
+      } else {
+        showLogin();
+      }
+    }
+
+    function showLogin() {
+      document.getElementById('loginOverlay').classList.remove('hidden');
+      document.getElementById('loginError').classList.add('hidden');
+      document.getElementById('username').focus();
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('loginError');
+
+      if (!username || !password) {
+        errorEl.textContent = 'Enter username and password.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const userLower = username.toLowerCase();
+        const user = await fbGet('users/' + encodeURIComponent(userLower));
+        
+        if (!user) {
+          errorEl.textContent = 'User not found.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        const hash = await sha256(password);
+        if (user.hash !== hash) {
+          errorEl.textContent = 'Wrong password.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        state.user = { username: userLower, displayName: user.displayName || userLower };
+        localStorage.setItem('planwise_session', JSON.stringify(state.user));
+        
+        document.getElementById('loginOverlay').classList.add('hidden');
+        loadPlanWiseEvents();
+        updateUI();
+      } catch (e) {
+        errorEl.textContent = 'Connection error. Check your internet.';
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    function doLogout() {
+      localStorage.removeItem('planwise_session');
+      state.user = null;
+      state.events = [];
+      showLogin();
+      updateUI();
+    }
+
+    // ============= PLANWISE EVENTS =============
+    async function loadPlanWiseEvents() {
+      try {
+        const plans = await fbGet('plans');
+        state.events = [];
+        
+        if (plans && typeof plans === 'object') {
+          for (const tripId in plans) {
+            const tripData = plans[tripId];
+            if (tripData && tripData.activities && typeof tripData.activities === 'object') {
+              for (const actId in tripData.activities) {
+                const activity = tripData.activities[actId];
+                if (activity && activity.title) {
+                  const eventDate = parseActivityDate(activity);
+                  if (eventDate) {
+                    state.events.push({
+                      title: activity.title,
+                      date: eventDate,
+                      tripId: tripId,
+                      description: activity.description || '',
+                      time: activity.time || 'All day'
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        renderCalendar();
+      } catch (e) {
+        console.error('Failed to load events:', e);
+        renderCalendar();
+      }
+    }
+
+    function parseActivityDate(activity) {
+      if (activity.date) {
+        const d = new Date(activity.date);
+        if (!isNaN(d)) return d;
+      }
+      return null;
+    }
+
+    // ============= CALENDAR =============
+    function renderCalendar() {
+      const year = state.currentDate.getFullYear();
+      const month = state.currentDate.getMonth();
+      
+      document.getElementById('monthYear').textContent = 
+        state.currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startingDayOfWeek = firstDay.getDay();
+
+      const container = document.getElementById('daysContainer');
+      container.innerHTML = '';
+
+      // Previous month days
+      const prevMonthLastDay = new Date(year, month, 0).getDate();
+      for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+        const dayEl = createDayElement(prevMonthLastDay - i, true, year, month - 1);
+        container.appendChild(dayEl);
+      }
+
+      // Current month days
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayEl = createDayElement(day, false, year, month);
+        container.appendChild(dayEl);
+      }
+
+      // Next month days
+      const totalCells = container.children.length;
+      const remainingCells = 42 - totalCells;
+      for (let day = 1; day <= remainingCells; day++) {
+        const dayEl = createDayElement(day, true, year, month + 1);
+        container.appendChild(dayEl);
+      }
+    }
+
+    function createDayElement(day, otherMonth, year, month) {
+      const dayEl = document.createElement('div');
+      dayEl.className = 'day';
+      
+      if (otherMonth) dayEl.classList.add('other-month');
+
+      const actualDate = new Date(year, month, day);
+      const today = new Date();
+      const isToday = 
+        actualDate.getDate() === today.getDate() &&
+        actualDate.getMonth() === today.getMonth() &&
+        actualDate.getFullYear() === today.getFullYear();
+
+      if (isToday) dayEl.classList.add('today');
+
+      const dayNum = document.createElement('div');
+      dayNum.className = 'day-number';
+      dayNum.textContent = day;
+      dayEl.appendChild(dayNum);
+
+      const eventsDiv = document.createElement('div');
+      eventsDiv.className = 'day-events';
+
+      const dayEvents = state.events.filter(evt => {
+        if (!evt.date) return false;
+        return evt.date.getDate() === day &&
+               evt.date.getMonth() === month &&
+               evt.date.getFullYear() === year;
+      });
+
+      dayEvents.forEach(evt => {
+        const eventDiv = document.createElement('div');
+        eventDiv.className = 'day-event';
+        eventDiv.textContent = evt.title.substring(0, 10);
+        eventsDiv.appendChild(eventDiv);
+      });
+
+      dayEl.appendChild(eventsDiv);
+
+      if (!otherMonth && dayEvents.length > 0) {
+        dayEl.onclick = function() { showEvents(day, month, year, dayEvents); };
+      }
+
+      return dayEl;
+    }
+
+    function showEvents(day, month, year, events) {
+      const container = document.getElementById('eventsContainer');
+      const dateStr = new Date(year, month, day).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      container.innerHTML = '<strong>' + dateStr + '</strong><hr style="margin: 8px 0; border: 1px solid var(--retro-alt);">';
+
+      events.forEach(evt => {
+        const item = document.createElement('div');
+        item.className = 'event-item';
+        item.innerHTML = 
+          '<div class="event-name">' + escapeHtml(evt.title) + '</div>' +
+          '<div class="event-details">' +
+          '<strong>Time:</strong> ' + escapeHtml(evt.time) + '<br>' +
+          (evt.description ? '<strong>Notes:</strong> ' + escapeHtml(evt.description) + '<br>' : '') +
+          '<strong>Trip:</strong> ' + escapeHtml(evt.tripId) +
+          '</div>';
+        container.appendChild(item);
+        triggerEventAnimation();
+      });
+
+      document.getElementById('eventModal').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('eventModal').classList.remove('show');
+    }
+
+    // ============= ANIMATIONS =============
+    const critters = ['🐱', '🐶', '🐰', '🦊', '🐻', '🐼', '🐨', '🦁'];
+    const confettiColors = ['🎉', '✨', '⭐', '💫', '🌟'];
+
+    function triggerEventAnimation() {
+      const mode = document.getElementById('effectSelect').value;
+      const modes = ['critter', 'confetti', 'dancer'];
+      const actual = mode === 'random' ? modes[Math.floor(Math.random() * 3)] : mode;
+
+      if (actual === 'critter') animateCritter();
+      else if (actual === 'confetti') animateConfetti();
+      else if (actual === 'dancer') animateDancer();
+    }
+
+    function animateCritter() {
+      const critter = document.createElement('div');
+      critter.className = 'critter';
+      critter.textContent = critters[Math.floor(Math.random() * critters.length)];
+      critter.style.top = Math.random() * window.innerHeight + 'px';
+      document.body.appendChild(critter);
+      setTimeout(function() { critter.remove(); }, 3000);
+    }
+
+    function animateConfetti() {
+      for (let i = 0; i < 20; i++) {
+        const conf = document.createElement('div');
+        conf.className = 'confetti';
+        conf.textContent = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+        conf.style.left = Math.random() * window.innerWidth + 'px';
+        conf.style.top = '-20px';
+        conf.style.animationDelay = (i * 0.05) + 's';
+        document.body.appendChild(conf);
+        setTimeout(function() { conf.remove(); }, 2000);
+      }
+    }
+
+    function animateDancer() {
+      const modal = document.querySelector('.modal-content');
+      if (modal) {
+        modal.classList.add('dancer');
+        setTimeout(function() { modal.classList.remove('dancer'); }, 600);
+      }
+    }
+
+    // ============= THEME =============
+    function setTheme(name) {
+      state.theme = name;
+      document.body.className = '';
+      if (name !== 'retro') document.body.classList.add('theme-' + name);
+      
+      document.querySelectorAll('.theme-btn').forEach(function(btn) { btn.classList.remove('active'); });
+      event.target.classList.add('active');
+      localStorage.setItem('pixelcal_theme', name);
+    }
+
+    // ============= NAV =============
+    function prevMonth() {
+      state.currentDate.setMonth(state.currentDate.getMonth() - 1);
+      renderCalendar();
+    }
+
+    function nextMonth() {
+      state.currentDate.setMonth(state.currentDate.getMonth() + 1);
+      renderCalendar();
+    }
+
+    function todayBtn() {
+      state.currentDate = new Date();
+      renderCalendar();
+    }
+
+    // ============= UTILS =============
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function updateUI() {
+      if (state.user) {
+        document.getElementById('userDisplay').textContent = '👤 ' + state.user.displayName;
+        document.getElementById('logoutBtn').classList.remove('hidden');
+        document.getElementById('loginBtn').classList.add('hidden');
+      } else {
+        document.getElementById('userDisplay').textContent = 'Not logged in';
+        document.getElementById('logoutBtn').classList.add('hidden');
+        document.getElementById('loginBtn').classList.remove('hidden');
+      }
+    }
+
+    // ============= INIT =============
+    document.addEventListener('DOMContentLoaded', function() {
+      const saved = localStorage.getItem('pixelcal_theme');
+      if (saved) setTheme(saved);
+      autoLogin();
+    });
+  </script>
+</body>
+</html>
