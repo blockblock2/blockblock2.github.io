@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MagicHub — Kids' Magic Tricks</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230d1b2a'/%3E%3C!-- Hat brim --%3E%3Crect x='5' y='21' width='22' height='3' rx='1.5' fill='%23f5c842'/%3E%3C!-- Hat body --%3E%3Crect x='10' y='9' width='12' height='13' rx='1' fill='%23f5c842'/%3E%3C!-- Hat band --%3E%3Crect x='10' y='17' width='12' height='2.5' fill='%23e8276b'/%3E%3C!-- Sparkles --%3E%3Ctext x='2' y='9' font-size='6' fill='%23f5c842'%3E✦%3C/text%3E%3Ctext x='24' y='7' font-size='5' fill='%23e8276b'%3E✦%3C/text%3E%3Ctext x='22' y='28' font-size='4' fill='%233ecf8e'%3E✦%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -303,13 +303,30 @@ try { currentUser = JSON.parse(localStorage.getItem('mh_user')); } catch{}
 function saveSession(user) { currentUser = user; localStorage.setItem('mh_user', JSON.stringify(user)); }
 function clearSession() { currentUser = null; localStorage.removeItem('mh_user'); }
 
+// Load avatar for current user on startup
+async function loadCurrentUserAvatar() {
+  if (!currentUser || currentUser.avatarUrl) return;
+  try {
+    const res = await fetch(`${WORKER}/magichub/avatar?username=${encodeURIComponent(currentUser.username)}`);
+    const data = await res.json();
+    if (data.avatarUrl) {
+      currentUser.avatarUrl = data.avatarUrl;
+      saveSession(currentUser);
+      renderNav();
+    }
+  } catch {}
+}
+
 // ── Nav ────────────────────────────────────────────────────────
 function renderNav() {
   const nr = document.getElementById('navRight');
   if (currentUser) {
+    const avatarHtml = currentUser.avatarUrl
+      ? `<img src="${currentUser.avatarUrl}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);">`
+      : `<div class="nav-avatar">${currentUser.username[0].toUpperCase()}</div>`;
     nr.innerHTML = `
       <div class="nav-user" style="cursor:none" onclick="openProfile()">
-        <div class="nav-avatar">${currentUser.username[0].toUpperCase()}</div>
+        ${avatarHtml}
         <span>${currentUser.username}</span>
       </div>`;
   } else {
@@ -615,20 +632,62 @@ async function doSignup() {
   finally { btn.textContent='Create Account'; btn.disabled=false; }
 }
 
+// ── Avatar upload ──────────────────────────────────────────────
+async function uploadAvatar(input) {
+  const file = input.files[0]; if(!file) return;
+  if(file.size > 1024*1024) { alert('Image must be under 1MB'); return; }
+  const status = document.getElementById('avatarStatus');
+  status.style.display='block'; status.style.color='var(--muted)'; status.textContent='Uploading…';
+
+  // Ask for password to verify
+  const password = prompt('Enter your password to update your profile picture:');
+  if(!password) { status.style.display='none'; return; }
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const base64 = reader.result.split(',')[1];
+    try {
+      const res = await fetch(`${WORKER}/magichub/avatar`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ username: currentUser.username, password, imageBase64: base64, mimeType: file.type })
+      });
+      const data = await res.json();
+      if(!res.ok) { status.style.color='#f87'; status.textContent=data.error||'Upload failed'; return; }
+      currentUser.avatarUrl = data.avatarUrl;
+      saveSession(currentUser);
+      status.style.color='var(--green)'; status.textContent='✓ Profile picture updated!';
+      renderNav();
+      // Refresh profile modal avatar
+      setTimeout(()=>{ document.getElementById('profileOverlay').classList.remove('open'); openProfile(); }, 800);
+    } catch { status.style.color='#f87'; status.textContent='Connection error. Try again.'; }
+  };
+  reader.readAsDataURL(file);
+}
+
 // ── Profile modal ──────────────────────────────────────────────
 function openProfile() {
   if(!currentUser) return;
   const myTricks=localTricks.filter(t=>t.author.toLowerCase()===currentUser.username.toLowerCase());
   const joined=currentUser.joinedAt?new Date(currentUser.joinedAt).toLocaleDateString('en',{year:'numeric',month:'long'}):'';
+  const avatarHtml = currentUser.avatarUrl
+    ? `<img src="${currentUser.avatarUrl}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);">`
+    : `<div class="profile-avatar">${currentUser.username[0].toUpperCase()}</div>`;
+
   document.getElementById('profileBody').innerHTML=`
     <div class="profile-header">
-      <div class="profile-avatar">${currentUser.username[0].toUpperCase()}</div>
+      <div style="position:relative;cursor:none" onclick="document.getElementById('avatarInput').click()" title="Change profile picture">
+        ${avatarHtml}
+        <div style="position:absolute;bottom:0;right:0;width:18px;height:18px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--navy);font-weight:700;">✎</div>
+      </div>
+      <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="uploadAvatar(this)">
       <div>
         <div class="profile-name">${currentUser.username}${IS_ADMIN?' <span class="verified" style="font-size:1rem">✓</span>':''}</div>
         <div class="profile-joined">${joined?`Joined ${joined}`:''}</div>
-        <div style="margin-top:6px;font-size:.82rem;color:var(--muted)">${myTricks.length} trick${myTricks.length!==1?'s':''} shared</div>
+        <div style="margin-top:4px;font-size:.75rem;color:var(--muted);cursor:none" onclick="document.getElementById('avatarInput').click()">Tap photo to change</div>
+        <div style="margin-top:4px;font-size:.82rem;color:var(--muted)">${myTricks.length} trick${myTricks.length!==1?'s':''} shared</div>
       </div>
     </div>
+    <div id="avatarStatus" style="margin-bottom:12px;font-size:.82rem;display:none"></div>
     <div class="profile-tricks-label">My Tricks</div>
     ${myTricks.length?myTricks.map(t=>`
       <div class="profile-trick-item" onclick="document.getElementById('profileOverlay').classList.remove('open');openModal(${t.id})">
@@ -671,6 +730,7 @@ function checkHash() {
 
 // ── Init ───────────────────────────────────────────────────────
 renderNav();
+loadCurrentUserAvatar();
 loadTricks().then(checkHash);
 </script>
 </body>
