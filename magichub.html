@@ -403,8 +403,8 @@ async function loadTricks() {
     if(!res.ok) throw new Error();
     localTricks = (await res.json()).map(issueToTrick);
     renderCards(activeFilter); updateCounters();
-  } catch {
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:64px 24px;color:var(--muted)"><div style="font-size:2.5rem;margin-bottom:12px">⚠️</div><p>Couldn't load tricks. Check your connection.</p></div>`;
+  } catch(e) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:64px 24px;color:var(--muted)"><div style="font-size:2.5rem;margin-bottom:12px">⚠️</div><p>Couldn't load tricks: ${e.message}</p></div>`;
   }
 }
 
