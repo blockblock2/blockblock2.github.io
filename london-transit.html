@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>London Transit Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23E1251B'/><rect x='2' y='12' width='28' height='8' fill='%23003D8F'/></svg>">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f5f4;--surface:#fff;--surface-alt:#f9f9f8;
+  --border:#e5e4e0;--border-strong:#ccc9c0;
+  --text:#1a1917;--text-secondary:#6b6963;--text-muted:#a09d96;
+  --tfl-red:#E1251B;--tfl-blue:#003D8F;
+  --radius:10px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1a1917;--surface:#242320;--surface-alt:#2a2926;
+    --border:#3a3835;--border-strong:#4a4845;
+    --text:#f0ede8;--text-secondary:#a09d96;--text-muted:#6b6963;
+    --shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.5}
+
+/* Header */
+header{background:var(--tfl-blue);padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:10px}
+.roundel{width:36px;height:36px;background:#E1251B;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0}
+.roundel::after{content:'';position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:11px;background:var(--tfl-blue)}
+.roundel span{position:relative;z-index:1;color:#fff;font-size:9px;font-weight:700;letter-spacing:.05em}
+.header-title{color:#fff;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.header-sub{color:rgba(255,255,255,.6);font-size:11px;margin-top:1px}
+#loc-btn{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;transition:background .15s;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#loc-btn:hover{background:rgba(255,255,255,.22)}
+#loc-dot{width:7px;height:7px;border-radius:50%;background:#6ee7b7;flex-shrink:0}
+#loc-dot.pulsing{animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Tabs */
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;position:sticky;top:56px;z-index:90}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1;min-width:72px;padding:12px 6px;text-align:center;font-size:11px;font-weight:500;color:var(--text-secondary);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tab svg{width:18px;height:18px}
+.tab.active{color:var(--tfl-red);border-bottom-color:var(--tfl-red)}
+.tab:hover:not(.active){color:var(--text);background:var(--surface-alt)}
+
+/* Layout */
+main{max-width:680px;margin:0 auto;padding:1.25rem}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;box-shadow:var(--shadow)}
+
+/* Form */
+.field{margin-bottom:10px}.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.field select,.field input{width:100%;padding:9px 12px;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;appearance:none;-webkit-appearance:none;transition:border-color .15s}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a09d96' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-color:var(--surface-alt);padding-right:32px}
+.field input[type=date],.field input[type=time]{cursor:default}
+.field select:focus,.field input:focus{outline:none;border-color:var(--tfl-blue);box-shadow:0 0 0 3px rgba(0,61,143,.12)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.swap-row{display:flex;align-items:center;gap:8px;margin:4px 0}
+.swap-row .divider{flex:1;height:1px;background:var(--border)}
+.swap-btn{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-secondary);font-size:14px;transition:all .15s;flex-shrink:0}
+.swap-btn:hover{border-color:var(--tfl-blue);color:var(--tfl-blue)}
+.primary-btn{width:100%;padding:11px;background:var(--tfl-red);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;margin-top:10px;letter-spacing:.01em;transition:opacity .15s}
+.primary-btn:hover{opacity:.9}.primary-btn:active{opacity:.8;transform:scale(.99)}
+.primary-btn:disabled{opacity:.5;cursor:default}
+
+/* Search box for bus stops */
+.search-wrap{position:relative}
+.search-wrap input{width:100%;padding:9px 36px 9px 12px;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:14px;transition:border-color .15s}
+.search-wrap input:focus{outline:none;border-color:var(--tfl-blue);box-shadow:0 0 0 3px rgba(0,61,143,.12)}
+.search-wrap .search-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;font-size:16px}
+.search-wrap .clear-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;display:none}
+.search-wrap input:not(:placeholder-shown) ~ .search-icon{display:none}
+.search-wrap input:not(:placeholder-shown) ~ .clear-btn{display:block}
+
+/* Autocomplete dropdown */
+.autocomplete{position:relative}
+.ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:200;max-height:280px;overflow-y:auto;display:none}
+.ac-dropdown.open{display:block}
+.ac-item{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;transition:background .1s}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover,.ac-item.focused{background:var(--surface-alt)}
+.ac-item-name{font-size:14px;font-weight:500;color:var(--text);flex:1}
+.ac-item-meta{font-size:12px;color:var(--text-muted)}
+.ac-icon{width:28px;height:28px;border-radius:50%;background:var(--tfl-red);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff}
+.ac-icon.tube{background:var(--tfl-blue)}
+
+/* Status label */
+.section-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+
+/* Journey results */
+.route-option{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:8px;cursor:pointer;transition:border-color .15s;box-shadow:var(--shadow)}
+.route-option:hover{border-color:var(--border-strong)}
+.route-option.selected{border:2px solid var(--tfl-blue)}
+.route-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.route-time{font-size:20px;font-weight:600;color:var(--text)}
+.route-meta{font-size:12px;color:var(--text-muted)}
+.route-badges{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.lbadge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
+.lbadge.dk{color:#1a1917}
+.sep{color:var(--text-muted);font-size:11px}
+.step{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.step:last-child{border-bottom:none}
+.step-bar{width:4px;border-radius:2px;min-height:44px;flex-shrink:0}
+.step-from{font-size:14px;font-weight:600;color:var(--text)}
+.step-desc{font-size:13px;color:var(--text-secondary);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+/* Status */
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.status-row{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;box-shadow:var(--shadow)}
+.s-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.s-name{font-size:13px;color:var(--text);flex:1}
+.s-badge{font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600;white-space:nowrap}
+.s-badge.good{background:#d1fae5;color:#065f46}
+.s-badge.minor{background:#fef3c7;color:#92400e}
+.s-badge.severe{background:#fee2e2;color:#991b1b}
+@media(prefers-color-scheme:dark){
+  .s-badge.good{background:#064e3b;color:#6ee7b7}
+  .s-badge.minor{background:#78350f;color:#fcd34d}
+  .s-badge.severe{background:#7f1d1d;color:#fca5a5}
+}
+
+/* Bus arrivals */
+.arrivals-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem}
+.arrivals-stop-name{font-size:17px;font-weight:700;color:var(--text);line-height:1.3}
+.arrivals-stop-meta{font-size:12px;color:var(--text-muted);margin-top:2px}
+.refresh-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:5px 10px;font-size:12px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;margin-left:10px;transition:border-color .15s}
+.refresh-btn:hover{border-color:var(--border-strong)}
+.bus-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.bus-row:last-child{border-bottom:none}
+.bus-num{min-width:42px;height:28px;background:var(--tfl-red);color:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;padding:0 6px}
+.bus-info{flex:1;min-width:0}
+.bus-dest{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bus-via{font-size:11px;color:var(--text-muted)}
+.bus-eta{text-align:right;flex-shrink:0}
+.bus-eta .next{font-size:14px;font-weight:700;color:var(--tfl-red)}
+.bus-eta .after{font-size:11px;color:var(--text-muted)}
+.bus-eta .due{font-size:14px;font-weight:700;color:#065f46}
+
+/* Nearby */
+.nearby-station{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer;transition:border-color .15s}
+.nearby-station:hover{border-color:var(--border-strong)}
+.ns-icon{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ns-name{font-size:14px;font-weight:600;color:var(--text)}
+.ns-lines{font-size:12px;color:var(--text-muted);margin-top:2px}
+.ns-dist{text-align:right;flex-shrink:0}
+.ns-dist .dist{font-size:13px;font-weight:600;color:var(--text)}
+.ns-dist .walk{font-size:11px;color:var(--text-muted)}
+
+/* Fares */
+.fare-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.fare-row:last-child{border-bottom:none}
+.fare-label{font-size:13px;color:var(--text-secondary)}
+.fare-note{font-size:11px;color:var(--text-muted);margin-top:1px}
+.fare-price{font-size:16px;font-weight:700;color:var(--text)}
+
+/* Spinner / states */
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--tfl-red);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--text-secondary);font-size:14px}
+.empty-state .emoji{font-size:36px;display:block;margin-bottom:10px}
+.empty-state strong{display:block;font-size:16px;color:var(--text);margin-bottom:6px}
+
+/* Location banner */
+#location-banner{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;box-shadow:var(--shadow);display:none;text-align:center}
+#location-banner.visible{display:block}
+.loc-pin{font-size:32px;display:block;margin-bottom:6px}
+.loc-name{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+.loc-coords{font-size:12px;color:var(--text-muted);font-family:monospace}
+.loc-acc{font-size:12px;color:var(--text-secondary);margin-top:3px}
+
+/* Tip */
+.tip{display:flex;gap:8px;align-items:flex-start;background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:10px 12px;font-size:12px;color:#1e40af;margin-top:.75rem}
+.tip a{color:inherit;font-weight:600}
+@media(prefers-color-scheme:dark){.tip{background:#1e3a5f;border-color:#1e40af;color:#93c5fd}}
+
+@media(max-width:480px){main{padding:1rem}.status-grid{grid-template-columns:1fr}.row2{grid-template-columns:1fr}.header-sub{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="roundel"><span>TfL</span></div>
+    <div>
+      <div class="header-title">London Transit</div>
+      <div class="header-sub">Underground · Bus · Overground</div>
+    </div>
+  </div>
+  <button id="loc-btn" onclick="getLocation()" title="Find my location">
+    <span id="loc-dot"></span>
+    <span id="loc-text">Find me 📍</span>
+  </button>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showPanel('journey',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M12 3l9 9-9 9"/></svg>
+    Journey
+  </button>
+  <button class="tab" onclick="showPanel('nearby',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    Nearby
+  </button>
+  <button class="tab" onclick="showPanel('status',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Status
+  </button>
+  <button class="tab" onclick="showPanel('buses',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="12" rx="2"/><path d="M16 19v2M8 19v2M2 12h20"/><circle cx="7" cy="15" r="1"/><circle cx="17" cy="15" r="1"/></svg>
+    Bus Times
+  </button>
+  <button class="tab" onclick="showPanel('fares',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+    Fares
+  </button>
+</div>
+
+<main>
+
+<!-- JOURNEY -->
+<div id="journey" class="panel active">
+  <div class="card">
+    <div class="field autocomplete" id="ac-from-wrap">
+      <label>From</label>
+      <div class="search-wrap">
+        <input type="text" id="from-input" placeholder="Search station…" autocomplete="off" oninput="acSearch(this,'ac-from')" onkeydown="acKey(event,'ac-from','from-input')" onfocus="acOpen('ac-from')">
+        <span class="search-icon">🔍</span>
+        <button class="clear-btn" onclick="acClear('from-input','ac-from',null)" tabindex="-1">×</button>
+      </div>
+      <div class="ac-dropdown" id="ac-from"></div>
+    </div>
+    <div class="swap-row">
+      <div class="divider"></div>
+      <button class="swap-btn" onclick="swapStations()" title="Swap">⇅</button>
+      <div class="divider"></div>
+    </div>
+    <div class="field autocomplete" id="ac-to-wrap">
+      <label>To</label>
+      <div class="search-wrap">
+        <input type="text" id="to-input" placeholder="Search station…" autocomplete="off" oninput="acSearch(this,'ac-to')" onkeydown="acKey(event,'ac-to','to-input')" onfocus="acOpen('ac-to')">
+        <span class="search-icon">🔍</span>
+        <button class="clear-btn" onclick="acClear('to-input','ac-to',null)" tabindex="-1">×</button>
+      </div>
+      <div class="ac-dropdown" id="ac-to"></div>
+    </div>
+    <div class="row2" style="margin-top:10px">
+      <div class="field" style="margin:0"><label>Date</label><input type="date" id="j-date"></div>
+      <div class="field" style="margin:0"><label>Time</label><input type="time" id="j-time"></div>
+    </div>
+    <div class="row2" style="margin-top:10px">
+      <div class="field" style="margin:0"><label>When</label>
+        <select id="j-when"><option>Leaving now</option><option>Depart at</option><option>Arrive by</option></select>
+      </div>
+      <div class="field" style="margin:0"><label>Preference</label>
+        <select id="j-pref"><option>Any route</option><option>Tube only</option><option>Bus only</option><option>Least changes</option></select>
+      </div>
+    </div>
+    <button class="primary-btn" onclick="planJourney()">Plan journey</button>
+  </div>
+  <div id="j-results" style="display:none">
+    <div class="section-label">Route options</div>
+    <div id="route-list"></div>
+    <div id="route-detail"></div>
+  </div>
+</div>
+
+<!-- NEARBY -->
+<div id="nearby" class="panel">
+  <div id="location-banner">
+    <span class="loc-pin">📍</span>
+    <div id="loc-place" class="loc-name">Locating…</div>
+    <div id="loc-coords" class="loc-coords"></div>
+    <div id="loc-acc" class="loc-acc"></div>
+  </div>
+  <div id="nearby-prompt" class="card" style="text-align:center;padding:2rem 1.25rem">
+    <div style="font-size:36px;margin-bottom:12px">📍</div>
+    <div style="font-weight:600;font-size:16px;margin-bottom:6px">Find stations near you</div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Share your location and we'll show nearby stations and live bus stops.</div>
+    <button class="primary-btn" style="margin-top:0" onclick="getLocation()">Use my location</button>
+  </div>
+  <div id="nearby-list" style="display:none"></div>
+</div>
+
+<!-- STATUS -->
+<div id="status" class="panel">
+  <div class="section-label">Line status — illustrative</div>
+  <div class="status-grid" id="status-grid"></div>
+  <div class="tip" style="margin-top:1rem">ℹ️ &nbsp;For live status visit <a href="https://tfl.gov.uk/tube-dlr-overground/status/" target="_blank" rel="noopener">tfl.gov.uk</a> or the TfL Go app.</div>
+</div>
+
+<!-- BUS TIMES — live via TfL API -->
+<div id="buses" class="panel">
+  <div class="card">
+    <div class="field autocomplete" style="margin:0">
+      <label>Search any bus stop</label>
+      <div class="search-wrap">
+        <input type="text" id="bus-search" placeholder="e.g. Oxford Circus, Brixton, N7 8JY…" autocomplete="off"
+          oninput="busSearchInput()" onkeydown="busSearchKey(event)">
+        <span class="search-icon">🔍</span>
+        <button class="clear-btn" onclick="clearBusSearch()" tabindex="-1">×</button>
+      </div>
+      <div class="ac-dropdown" id="bus-ac"></div>
+    </div>
+    <div class="tip" style="margin-top:10px;margin-bottom:0">
+      🚌 &nbsp;Live arrivals from the <strong>TfL open API</strong> — all 19,000+ bus stops in London.
+    </div>
+  </div>
+  <div id="bus-results"></div>
+</div>
+
+<!-- FARES -->
+<div id="fares" class="panel">
+  <div class="card">
+    <div class="row2">
+      <div class="field" style="margin:0"><label>From zone</label>
+        <select id="fare-from" onchange="calcFare()">
+          <option value="1">Zone 1</option><option value="2">Zone 2</option>
+          <option value="3">Zone 3</option><option value="4">Zone 4</option>
+          <option value="5">Zone 5</option><option value="6">Zone 6</option>
+        </select>
+      </div>
+      <div class="field" style="margin:0"><label>To zone</label>
+        <select id="fare-to" onchange="calcFare()">
+          <option value="1">Zone 1</option><option value="2">Zone 2</option>
+          <option value="3">Zone 3</option><option value="4">Zone 4</option>
+          <option value="5">Zone 5</option><option value="6">Zone 6</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="card"><div class="section-label">Tube fare (Oyster / contactless)</div><div id="fare-results"></div></div>
+  <div class="card">
+    <div class="section-label">Daily caps</div>
+    <div class="fare-row"><div><div class="fare-label">Zones 1–2</div><div class="fare-note">Oyster / contactless</div></div><div class="fare-price">£8.10</div></div>
+    <div class="fare-row"><div><div class="fare-label">Zones 1–3</div><div class="fare-note">Oyster / contactless</div></div><div class="fare-price">£9.95</div></div>
+    <div class="fare-row"><div><div class="fare-label">Zones 1–6</div><div class="fare-note">Oyster / contactless</div></div><div class="fare-price">£14.90</div></div>
+    <div class="fare-row"><div><div class="fare-label">Bus single — any route</div><div class="fare-note">All zones, Oyster / contactless</div></div><div class="fare-price">£1.75</div></div>
+    <div class="fare-row"><div><div class="fare-label">Bus daily cap</div><div class="fare-note">All bus journeys</div></div><div class="fare-price">£5.25</div></div>
+  </div>
+  <div class="tip">💳 &nbsp;Pay with Oyster or contactless for best fares. Daily caps apply automatically.</div>
+</div>
+
+</main>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────────────────
+const TFL = 'https://api.tfl.gov.uk';
+
+function showPanel(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  closeAllDropdowns();
+}
+
+function closeAllDropdowns(){
+  document.querySelectorAll('.ac-dropdown').forEach(d=>d.classList.remove('open'));
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.autocomplete')&&!e.target.closest('#bus-search')?.closest('.card')) closeAllDropdowns();
+});
+
+// Init date/time
+const now=new Date();
+document.getElementById('j-date').value=now.toISOString().split('T')[0];
+document.getElementById('j-time').value=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+
+// ── TfL API ───────────────────────────────────────────────────────────────
+async function tflGet(path){
+  const r=await fetch(TFL+path);
+  if(!r.ok) throw new Error('TfL API '+r.status);
+  return r.json();
+}
+
+// ── Station autocomplete (Journey planner) ────────────────────────────────
+const stations=[
+  {n:"Bank",l:['Central','Northern','Waterloo & City']},
+  {n:"Canary Wharf",l:['Jubilee','Elizabeth','DLR']},
+  {n:"Euston",l:['Northern','Victoria']},
+  {n:"King's Cross St. Pancras",l:['Victoria','Piccadilly','Northern','Metropolitan']},
+  {n:"Liverpool Street",l:['Central','Circle','Metropolitan','Elizabeth']},
+  {n:"London Bridge",l:['Northern','Jubilee']},
+  {n:"Oxford Circus",l:['Central','Bakerloo','Victoria']},
+  {n:"Paddington",l:['Circle','District','Bakerloo','Elizabeth']},
+  {n:"Victoria",l:['Circle','District','Victoria']},
+  {n:"Waterloo",l:['Jubilee','Northern','Bakerloo','Waterloo & City']},
+  {n:"Green Park",l:['Jubilee','Victoria','Piccadilly']},
+  {n:"Leicester Square",l:['Northern','Piccadilly']},
+  {n:"Stratford",l:['Central','Jubilee','DLR','Overground','Elizabeth']},
+  {n:"Westminster",l:['Circle','District','Jubilee']},
+  {n:"Brixton",l:['Victoria']},
+  {n:"Elephant & Castle",l:['Bakerloo','Northern']},
+  {n:"London Euston",l:['Northern','Victoria']},
+  {n:"Heathrow Terminal 5",l:['Piccadilly','Elizabeth']},
+  {n:"Moorgate",l:['Circle','Metropolitan','Northern']},
+  {n:"Tower Hill",l:['Circle','District']},
+  {n:"Aldgate East",l:['District','Hammersmith & City']},
+  {n:"Mile End",l:['Central','District','Hammersmith & City']},
+  {n:"Bethnal Green",l:['Central']},
+  {n:"Whitechapel",l:['District','Hammersmith & City','Elizabeth']},
+  {n:"Shadwell",l:['DLR','Overground']},
+  {n:"Bermondsey",l:['Jubilee']},
+  {n:"Borough",l:['Northern']},
+  {n:"Balham",l:['Northern']},
+  {n:"Clapham Common",l:['Northern']},
+  {n:"Clapham North",l:['Northern']},
+  {n:"Stockwell",l:['Northern','Victoria']},
+  {n:"Oval",l:['Northern']},
+  {n:"Kennington",l:['Northern']},
+  {n:"Angel",l:['Northern']},
+  {n:"Old Street",l:['Northern']},
+  {n:"Highbury & Islington",l:['Victoria','Overground']},
+  {n:"Finsbury Park",l:['Piccadilly','Victoria']},
+  {n:"Seven Sisters",l:['Victoria']},
+  {n:"Tottenham Hale",l:['Victoria']},
+  {n:"Walthamstow Central",l:['Victoria']},
+  {n:"Bond Street",l:['Central','Jubilee','Elizabeth']},
+  {n:"Marble Arch",l:['Central']},
+  {n:"Notting Hill Gate",l:['Central','Circle','District']},
+  {n:"Hammersmith",l:['District','Piccadilly','Circle','Hammersmith & City']},
+  {n:"Shepherd's Bush",l:['Central','Overground']},
+  {n:"Holborn",l:['Central','Piccadilly']},
+  {n:"Chancery Lane",l:['Central']},
+  {n:"St. Paul's",l:['Central']},
+  {n:"Barbican",l:['Circle','Metropolitan','Hammersmith & City']},
+  {n:"Farringdon",l:['Circle','Metropolitan','Hammersmith & City','Elizabeth']},
+];
+
+let acSelections={from:null,to:null};
+
+function acSearch(input,dropId){
+  const q=input.value.trim().toLowerCase();
+  const dd=document.getElementById(dropId);
+  if(q.length<2){dd.classList.remove('open');return}
+  const matches=stations.filter(s=>s.n.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){dd.innerHTML='<div class="ac-item"><div class="ac-item-name" style="color:var(--text-muted)">No stations found</div></div>';dd.classList.add('open');return}
+  dd.innerHTML=matches.map((s,i)=>`<div class="ac-item" data-idx="${i}" onclick="acSelect('${dropId}','${s.n.replace(/'/g,"\\'")}')">
+    <div class="ac-icon tube">TfL</div>
+    <div><div class="ac-item-name">${s.n}</div><div class="ac-item-meta">${s.l.join(' · ')}</div></div>
+  </div>`).join('');
+  dd._matches=matches;
+  dd._focusIdx=-1;
+  dd.classList.add('open');
+}
+
+function acOpen(dropId){
+  const inp=dropId==='ac-from'?document.getElementById('from-input'):document.getElementById('to-input');
+  if(inp.value.trim().length>=2) acSearch(inp,dropId);
+}
+
+function acSelect(dropId,name){
+  const isFrom=dropId==='ac-from';
+  const inputId=isFrom?'from-input':'to-input';
+  document.getElementById(inputId).value=name;
+  acSelections[isFrom?'from':'to']=name;
+  document.getElementById(dropId).classList.remove('open');
+}
+
+function acClear(inputId,dropId){
+  document.getElementById(inputId).value='';
+  document.getElementById(dropId).classList.remove('open');
+  const key=dropId==='ac-from'?'from':'to';
+  acSelections[key]=null;
+}
+
+function acKey(event,dropId,inputId){
+  const dd=document.getElementById(dropId);
+  if(!dd.classList.contains('open')) return;
+  const items=dd.querySelectorAll('.ac-item');
+  if(!items.length) return;
+  if(event.key==='ArrowDown'){event.preventDefault();dd._focusIdx=Math.min((dd._focusIdx||0)+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('focused',i===dd._focusIdx));}
+  else if(event.key==='ArrowUp'){event.preventDefault();dd._focusIdx=Math.max((dd._focusIdx||0)-1,0);items.forEach((el,i)=>el.classList.toggle('focused',i===dd._focusIdx));}
+  else if(event.key==='Enter'&&dd._focusIdx>=0){items[dd._focusIdx].click();}
+  else if(event.key==='Escape'){dd.classList.remove('open');}
+}
+
+function swapStations(){
+  const fi=document.getElementById('from-input'),ti=document.getElementById('to-input');
+  const tmp=fi.value;fi.value=ti.value;ti.value=tmp;
+  const ts=acSelections.from;acSelections.from=acSelections.to;acSelections.to=ts;
+}
+
+// ── BUS STOP SEARCH — live TfL API ────────────────────────────────────────
+let busSearchTimer=null;
+let currentStopId=null;
+let arrivalsTimer=null;
+
+function busSearchInput(){
+  clearTimeout(busSearchTimer);
+  const q=document.getElementById('bus-search').value.trim();
+  const dd=document.getElementById('bus-ac');
+  if(q.length<3){dd.classList.remove('open');return}
+  busSearchTimer=setTimeout(()=>fetchStops(q),350);
+}
+
+async function fetchStops(q){
+  const dd=document.getElementById('bus-ac');
+  dd.innerHTML='<div class="ac-item"><div class="spinner"></div><div class="ac-item-name" style="color:var(--text-muted)">Searching…</div></div>';
+  dd.classList.add('open');
+  try{
+    const data=await tflGet(`/StopPoint/Search/${encodeURIComponent(q)}?modes=bus&maxResults=12`);
+    const stops=(data.matches||[]).filter(s=>s.modes&&s.modes.includes('bus'));
+    if(!stops.length){
+      dd.innerHTML='<div class="ac-item"><div class="ac-item-name" style="color:var(--text-muted)">No stops found — try a different name or postcode</div></div>';
+      return;
+    }
+    dd.innerHTML=stops.map((s,i)=>`<div class="ac-item" data-idx="${i}" onclick="selectBusStop('${s.id}','${(s.name||'').replace(/'/g,"\\'")}','${(s.stopLetter||'').replace(/'/g,"\\'")}')">
+      <div class="ac-icon">🚌</div>
+      <div>
+        <div class="ac-item-name">${s.name||s.id}${s.stopLetter?' (Stop '+s.stopLetter+')':''}</div>
+        <div class="ac-item-meta">${(s.modes||[]).join(', ')} · ${s.id}</div>
+      </div>
+    </div>`).join('');
+  }catch(e){
+    dd.innerHTML='<div class="ac-item"><div class="ac-item-name" style="color:#991b1b">Could not reach TfL API — check your connection</div></div>';
+  }
+}
+
+function busSearchKey(e){
+  const dd=document.getElementById('bus-ac');
+  if(!dd.classList.contains('open')) return;
+  const items=dd.querySelectorAll('.ac-item');
+  if(e.key==='Escape'){dd.classList.remove('open');}
+  else if(e.key==='Enter'&&items.length===1){items[0].click();}
+}
+
+function clearBusSearch(){
+  document.getElementById('bus-search').value='';
+  document.getElementById('bus-ac').classList.remove('open');
+  document.getElementById('bus-results').innerHTML='';
+  clearInterval(arrivalsTimer);
+  currentStopId=null;
+}
+
+async function selectBusStop(id,name,letter){
+  document.getElementById('bus-search').value=name+(letter?' (Stop '+letter+')':'');
+  document.getElementById('bus-ac').classList.remove('open');
+  currentStopId=id;
+  clearInterval(arrivalsTimer);
+  await loadArrivals(id,name,letter);
+  arrivalsTimer=setInterval(()=>{if(currentStopId===id) loadArrivals(id,name,letter)},30000);
+}
+
+async function loadArrivals(id,name,letter,isRefresh=false){
+  const res=document.getElementById('bus-results');
+  if(!isRefresh){
+    res.innerHTML=`<div class="card"><div class="arrivals-header">
+      <div><div class="arrivals-stop-name">${name}${letter?' <span style="font-size:13px;font-weight:400;color:var(--text-secondary)">Stop ${letter}</span>':''}</div>
+      <div class="arrivals-stop-meta">Loading live arrivals…</div></div>
+      <div class="spinner"></div>
+    </div></div>`;
+  }
+  try{
+    const arrivals=await tflGet(`/StopPoint/${id}/Arrivals`);
+    // Group by line and sort by arrival time
+    const byLine={};
+    arrivals.forEach(a=>{
+      const line=a.lineName||a.lineId||'?';
+      if(!byLine[line]) byLine[line]=[];
+      byLine[line].push(a);
+    });
+    Object.keys(byLine).forEach(l=>byLine[l].sort((a,b)=>a.timeToStation-b.timeToStation));
+    // Flatten: take up to 3 per line, sort all by time to station
+    const rows=[];
+    Object.entries(byLine).forEach(([line,buses])=>{
+      buses.slice(0,3).forEach(b=>rows.push({...b,_line:line}));
+    });
+    rows.sort((a,b)=>a.timeToStation-b.timeToStation);
+    const updated=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    if(!rows.length){
+      res.innerHTML=`<div class="card">
+        <div class="arrivals-header">
+          <div><div class="arrivals-stop-name">${name}${letter?' <span style="font-size:13px;font-weight:400;color:var(--text-secondary)">Stop ${letter}</span>':''}</div>
+          <div class="arrivals-stop-meta">Updated ${updated}</div></div>
+          <button class="refresh-btn" onclick="loadArrivals('${id}','${name.replace(/'/g,"\\'")}','${letter}',true)">↻ Refresh</button>
+        </div>
+        <div class="empty-state"><span class="emoji">🕐</span><strong>No buses due</strong>Check back soon — no arrivals predicted in the next 30 minutes.</div>
+      </div>`;
+      return;
+    }
+    let html=`<div class="card">
+      <div class="arrivals-header">
+        <div>
+          <div class="arrivals-stop-name">${name}${letter?' <span style="font-size:13px;font-weight:400;color:var(--text-secondary)">Stop '+letter+'</span>':''}</div>
+          <div class="arrivals-stop-meta">Live · Updated ${updated} · ${rows.length} buses due</div>
+        </div>
+        <button class="refresh-btn" onclick="loadArrivals('${id}','${name.replace(/'/g,"\\'")}','${letter}',true)">↻ Refresh</button>
+      </div>`;
+    rows.forEach(b=>{
+      const mins=Math.round(b.timeToStation/60);
+      const dest=b.destinationName||b.towards||'Unknown destination';
+      const due=mins<=1;
+      html+=`<div class="bus-row">
+        <div class="bus-num">${b._line}</div>
+        <div class="bus-info">
+          <div class="bus-dest">${dest}</div>
+          <div class="bus-via">${b.platformName||''}</div>
+        </div>
+        <div class="bus-eta">
+          ${due?'<div class="bus-eta due">Due</div>':'<div class="next">'+mins+' min</div>'}
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+    res.innerHTML=html;
+  }catch(e){
+    res.innerHTML=`<div class="card"><div class="empty-state"><span class="emoji">⚠️</span><strong>Could not load arrivals</strong>${e.message}</div></div>`;
+  }
+}
+
+// ── Nearby bus stops via TfL API ──────────────────────────────────────────
+async function loadNearbyBusStops(lat,lng){
+  try{
+    const data=await tflGet(`/StopPoint?lat=${lat}&lon=${lng}&stopTypes=NaptanPublicBusCoachTram&radius=400&useStopPointHierarchy=false&modes=bus&returnLines=true&app_id=&app_key=`);
+    return (data.stopPoints||[]).slice(0,6);
+  }catch(e){return []}
+}
+
+// ── Geolocation ────────────────────────────────────────────────────────────
+const locBtn=document.getElementById('loc-btn');
+const locDot=document.getElementById('loc-dot');
+const locTxt=document.getElementById('loc-text');
+let userCoords=null;
+
+function getLocation(){
+  if(!navigator.geolocation){locTxt.textContent='Not supported';return}
+  locDot.classList.add('pulsing');
+  locTxt.textContent='Locating…';
+  navigator.geolocation.getCurrentPosition(
+    async pos=>{
+      userCoords={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      const acc=Math.round(pos.coords.accuracy);
+      locDot.classList.remove('pulsing');
+      try{
+        const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userCoords.lat}&lon=${userCoords.lng}&format=json`);
+        const d=await r.json();
+        const place=d.address.suburb||d.address.city_district||d.address.town||d.address.city||'London';
+        locTxt.textContent=place+' 📍';
+        document.getElementById('location-banner').classList.add('visible');
+        document.getElementById('loc-place').textContent=place;
+        document.getElementById('loc-coords').textContent=userCoords.lat.toFixed(5)+', '+userCoords.lng.toFixed(5);
+        document.getElementById('loc-acc').textContent='±'+acc+' m accuracy';
+      }catch{
+        locTxt.textContent='Located 📍';
+      }
+      renderNearby(userCoords);
+    },
+    err=>{
+      locDot.classList.remove('pulsing');
+      const msgs=['','Location access denied','Location unavailable','Request timed out'];
+      locTxt.textContent=msgs[err.code]||'Error';
+    },
+    {enableHighAccuracy:true,timeout:10000,maximumAge:60000}
+  );
+}
+
+// Station database with coords
+const STATIONS_GEO=[
+  {name:"Bank",lat:51.5133,lng:-0.0886,lines:['Central','Northern','Waterloo & City'],color:'#E32017'},
+  {name:"Canary Wharf",lat:51.5051,lng:-0.0209,lines:['Jubilee','Elizabeth','DLR'],color:'#868F98'},
+  {name:"Euston",lat:51.5282,lng:-0.1337,lines:['Northern','Victoria'],color:'#000'},
+  {name:"King's Cross St. Pancras",lat:51.5308,lng:-0.1238,lines:['Victoria','Piccadilly','Northern','Metropolitan'],color:'#009FE0'},
+  {name:"Liverpool Street",lat:51.5178,lng:-0.0823,lines:['Central','Circle','Metropolitan','Elizabeth'],color:'#E32017'},
+  {name:"London Bridge",lat:51.5052,lng:-0.0864,lines:['Northern','Jubilee'],color:'#868F98'},
+  {name:"Oxford Circus",lat:51.5154,lng:-0.1410,lines:['Central','Bakerloo','Victoria'],color:'#009FE0'},
+  {name:"Paddington",lat:51.5154,lng:-0.1755,lines:['Circle','District','Bakerloo','Elizabeth'],color:'#B36305'},
+  {name:"Victoria",lat:51.4965,lng:-0.1440,lines:['Circle','District','Victoria'],color:'#009FE0'},
+  {name:"Waterloo",lat:51.5036,lng:-0.1143,lines:['Jubilee','Northern','Bakerloo'],color:'#868F98'},
+  {name:"Westminster",lat:51.5010,lng:-0.1247,lines:['Circle','District','Jubilee'],color:'#00782A'},
+  {name:"Green Park",lat:51.5067,lng:-0.1428,lines:['Jubilee','Victoria','Piccadilly'],color:'#868F98'},
+  {name:"Leicester Square",lat:51.5113,lng:-0.1281,lines:['Northern','Piccadilly'],color:'#000'},
+  {name:"Stratford",lat:51.5416,lng:0.0042,lines:['Central','Jubilee','DLR','Overground','Elizabeth'],color:'#EE7C0E'},
+  {name:"Brixton",lat:51.4627,lng:-0.1145,lines:['Victoria'],color:'#009FE0'},
+  {name:"Elephant & Castle",lat:51.4943,lng:-0.1001,lines:['Bakerloo','Northern'],color:'#B36305'},
+  {name:"Moorgate",lat:51.5186,lng:-0.0886,lines:['Circle','Metropolitan','Northern'],color:'#FFD329'},
+  {name:"Tower Hill",lat:51.5099,lng:-0.0766,lines:['Circle','District'],color:'#00782A'},
+  {name:"Angel",lat:51.5322,lng:-0.1058,lines:['Northern'],color:'#000'},
+  {name:"Highbury & Islington",lat:51.5462,lng:-0.1033,lines:['Victoria','Overground'],color:'#009FE0'},
+];
+
+function haversine(a,b,c,d){const R=6371000,φ1=a*Math.PI/180,φ2=c*Math.PI/180,Δφ=(c-a)*Math.PI/180,Δλ=(d-b)*Math.PI/180,x=Math.sin(Δφ/2)**2+Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
+
+async function renderNearby(coords){
+  const list=document.getElementById('nearby-list');
+  const prompt=document.getElementById('nearby-prompt');
+  prompt.style.display='none';
+  list.style.display='block';
+  list.innerHTML='<div class="section-label">Tube stations nearby</div>';
+
+  // Tube stations
+  const sorted=STATIONS_GEO.map(s=>({...s,dist:haversine(coords.lat,coords.lng,s.lat,s.lng)})).sort((a,b)=>a.dist-b.dist).slice(0,6);
+  sorted.forEach(s=>{
+    const distStr=s.dist<1000?Math.round(s.dist)+' m':(s.dist/1000).toFixed(1)+' km';
+    const walk=Math.round(s.dist/80);
+    const el=document.createElement('div');
+    el.className='nearby-station';
+    el.onclick=()=>{document.getElementById('from-input').value=s.name;acSelections.from=s.name;showPanel('journey',document.querySelectorAll('.tab')[0])};
+    el.innerHTML=`<div class="ns-icon" style="background:${s.color}22"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${s.color}" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div>
+      <div style="flex:1;min-width:0"><div class="ns-name">${s.name}</div><div class="ns-lines">${s.lines.join(' · ')}</div></div>
+      <div class="ns-dist"><div class="dist">${distStr}</div><div class="walk">~${walk} min walk</div></div>`;
+    list.appendChild(el);
+  });
+
+  // Live nearby bus stops from TfL
+  const busSection=document.createElement('div');
+  busSection.innerHTML='<div class="section-label" style="margin-top:1.25rem">Bus stops nearby — live</div><div id="nearby-bus-loading" style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);padding:8px 0"><div class="spinner"></div> Loading stops from TfL…</div>';
+  list.appendChild(busSection);
+
+  try{
+    const stops=await loadNearbyBusStops(coords.lat,coords.lng);
+    document.getElementById('nearby-bus-loading').remove();
+    if(!stops.length){
+      busSection.insertAdjacentHTML('beforeend','<div style="font-size:13px;color:var(--text-muted);padding:8px 0">No bus stops found nearby.</div>');
+    } else {
+      stops.forEach(stop=>{
+        const dist=haversine(coords.lat,coords.lng,stop.lat,stop.lon);
+        const distStr=dist<1000?Math.round(dist)+' m':(dist/1000).toFixed(1)+' km';
+        const walk=Math.round(dist/80);
+        const routes=(stop.lines||[]).map(l=>l.id||l.name).filter(Boolean).sort().slice(0,8).join(', ');
+        const el=document.createElement('div');
+        el.className='nearby-station';
+        el.onclick=()=>{
+          const name=stop.commonName||stop.name||stop.id;
+          const letter=stop.stopLetter||'';
+          document.getElementById('bus-search').value=name+(letter?' (Stop '+letter+')':'');
+          showPanel('buses',document.querySelectorAll('.tab')[3]);
+          selectBusStop(stop.id,name,letter);
+        };
+        el.innerHTML=`<div class="ac-icon" style="width:38px;height:38px;border-radius:50%;background:#E1251B;flex-shrink:0;font-size:14px">🚌</div>
+          <div style="flex:1;min-width:0">
+            <div class="ns-name">${stop.commonName||stop.name||stop.id}${stop.stopLetter?' <span style="font-size:12px;color:var(--text-muted)">Stop ${stop.stopLetter}</span>':''}</div>
+            <div class="ns-lines">${routes||'Bus stop'}</div>
+          </div>
+          <div class="ns-dist"><div class="dist">${distStr}</div><div class="walk">~${walk} min</div></div>`;
+        busSection.appendChild(el);
+      });
+    }
+  }catch(e){
+    document.getElementById('nearby-bus-loading').textContent='Could not load live stops: '+e.message;
+  }
+
+  const tip=document.createElement('div');
+  tip.className='tip';
+  tip.innerHTML='💡 &nbsp;Tap a station to set it as your journey start. Tap a bus stop for live arrivals.';
+  list.appendChild(tip);
+}
+
+// ── Line status ────────────────────────────────────────────────────────────
+const lineStatus=[
+  {name:'Bakerloo',color:'#B36305',level:'good'},{name:'Central',color:'#E32017',level:'good'},
+  {name:'Circle',color:'#FFD329',level:'minor'},{name:'District',color:'#00782A',level:'good'},
+  {name:'Elizabeth',color:'#6950A1',level:'good'},{name:'Jubilee',color:'#868F98',level:'good'},
+  {name:'Metropolitan',color:'#9B0056',level:'severe'},{name:'Northern',color:'#111',level:'good'},
+  {name:'Piccadilly',color:'#003888',level:'minor'},{name:'Victoria',color:'#009FE0',level:'good'},
+  {name:'Waterloo & City',color:'#76D0BD',level:'good'},{name:'Hammersmith & City',color:'#F3A9BB',level:'good'},
+  {name:'Overground',color:'#EE7C0E',level:'good'},{name:'DLR',color:'#00AFAD',level:'good'},
+];
+const sg=document.getElementById('status-grid');
+lineStatus.forEach(l=>{
+  const el=document.createElement('div');
+  el.className='status-row';
+  el.innerHTML=`<div class="s-dot" style="background:${l.color}"></div><div class="s-name">${l.name}</div><span class="s-badge ${l.level}">${l.level==='good'?'Good':l.level==='minor'?'Delays':'Suspended'}</span>`;
+  sg.appendChild(el);
+});
+
+// ── Fares ──────────────────────────────────────────────────────────────────
+const fareTable={'1-1':{p:3.70,o:2.80},'1-2':{p:3.70,o:2.80},'1-3':{p:4.05,o:3.20},'1-4':{p:4.70,o:3.60},'1-5':{p:5.65,o:3.70},'1-6':{p:6.70,o:4.25},'2-2':{p:2.00,o:1.90},'2-3':{p:2.40,o:1.90},'2-4':{p:3.00,o:2.20},'2-5':{p:3.70,o:2.70},'2-6':{p:4.00,o:3.20},'3-3':{p:2.00,o:1.90},'3-4':{p:2.00,o:1.90},'3-5':{p:3.00,o:2.20},'3-6':{p:3.20,o:2.50},'4-4':{p:2.00,o:1.90},'4-5':{p:2.00,o:1.90},'4-6':{p:2.80,o:2.20},'5-5':{p:2.00,o:1.90},'5-6':{p:2.00,o:1.90},'6-6':{p:2.00,o:1.90}};
+function calcFare(){
+  const f=parseInt(document.getElementById('fare-from').value),t=parseInt(document.getElementById('fare-to').value);
+  const lo=Math.min(f,t),hi=Math.max(f,t);
+  const fare=fareTable[lo+'-'+hi]||{p:3.70,o:2.80};
+  const zones=lo===hi?'Zone '+lo:'Zones '+lo+'–'+hi;
+  document.getElementById('fare-results').innerHTML=`
+    <div class="fare-row"><div><div class="fare-label">Peak single</div><div class="fare-note">${zones} · 06:30–09:30, 16:00–19:00 Mon–Fri</div></div><div class="fare-price">£${fare.p.toFixed(2)}</div></div>
+    <div class="fare-row"><div><div class="fare-label">Off-peak single</div><div class="fare-note">${zones} · all other times</div></div><div class="fare-price">£${fare.o.toFixed(2)}</div></div>
+    <div class="fare-row"><div><div class="fare-label">Cash / ticket machine</div><div class="fare-note">No Oyster required</div></div><div class="fare-price">£${(Math.round(fare.p*1.35*20)/20).toFixed(2)}</div></div>`;
+}
+calcFare();
+
+// ── Journey planner ────────────────────────────────────────────────────────
+const lineColors={'Bakerloo':'#B36305','Central':'#E32017','Circle':'#FFD329','District':'#00782A','Elizabeth':'#6950A1','Hammersmith & City':'#F3A9BB','Jubilee':'#868F98','Metropolitan':'#9B0056','Northern':'#111','Piccadilly':'#003888','Victoria':'#009FE0','Waterloo & City':'#76D0BD','Overground':'#EE7C0E','DLR':'#00AFAD'};
+const hardRoutes={
+  "Oxford Circus|King's Cross St. Pancras":[
+    {time:'12 min',changes:0,steps:[{line:'Victoria',from:"Oxford Circus",to:"King's Cross St. Pancras",dir:'Brixton',stops:2}]},
+    {time:'18 min',changes:1,steps:[{line:'Central',from:"Oxford Circus",to:"Bank",dir:'Epping',stops:3},{line:'Northern',from:"Bank",to:"King's Cross St. Pancras",dir:'High Barnet',stops:3}]}
+  ],
+  'Waterloo|Canary Wharf':[
+    {time:'17 min',changes:0,steps:[{line:'Jubilee',from:'Waterloo',to:'Canary Wharf',dir:'Stratford',stops:4}]},
+    {time:'26 min',changes:1,steps:[{line:'Northern',from:'Waterloo',to:'Bank',dir:'Edgware',stops:2},{line:'DLR',from:'Bank',to:'Canary Wharf',dir:'Lewisham',stops:2}]}
+  ],
+  'Victoria|Paddington':[
+    {time:'10 min',changes:0,steps:[{line:'Circle',from:'Victoria',to:'Paddington',dir:'Hammersmith',stops:3}]},
+    {time:'15 min',changes:1,steps:[{line:'Victoria',from:'Victoria',to:'Oxford Circus',dir:'Walthamstow',stops:2},{line:'Bakerloo',from:'Oxford Circus',to:'Paddington',dir:'Harrow',stops:2}]}
+  ],
+  'Bank|Heathrow Terminal 5':[
+    {time:'43 min',changes:0,steps:[{line:'Elizabeth',from:'Bank',to:'Heathrow Terminal 5',dir:'Reading',stops:8}]},
+    {time:'58 min',changes:2,steps:[{line:'Central',from:'Bank',to:'Notting Hill Gate',dir:'Ealing',stops:5},{line:'District',from:'Notting Hill Gate',to:'Hammersmith',dir:'Richmond',stops:2},{line:'Piccadilly',from:'Hammersmith',to:'Heathrow Terminal 5',dir:'Heathrow',stops:8}]}
+  ],
+};
+function lookupRoute(a,b){const k1=a+'|'+b,k2=b+'|'+a;return hardRoutes[k1]||hardRoutes[k2]||null}
+function genRoutes(from,to){
+  const picks=Object.keys(lineColors);
+  const p=()=>picks[Math.floor(Math.random()*picks.length)];
+  return[
+    {time:(Math.floor(Math.random()*14)+9)+' min',changes:0,steps:[{line:p(),from,to,dir:'towards destination',stops:Math.floor(Math.random()*5)+2}]},
+    {time:(Math.floor(Math.random()*14)+22)+' min',changes:1,steps:[{line:p(),from,to:'Interchange',dir:'towards destination',stops:Math.floor(Math.random()*4)+2},{line:p(),from:'Interchange',to,dir:'towards destination',stops:Math.floor(Math.random()*4)+2}]}
+  ];
+}
+function planJourney(){
+  const from=document.getElementById('from-input').value.trim();
+  const to=document.getElementById('to-input').value.trim();
+  if(!from||!to){alert('Please enter both a start and end station.');return}
+  if(from===to){alert('Start and end must be different.');return}
+  const routes=lookupRoute(from,to)||genRoutes(from,to);
+  renderRoutes(routes,from,to);
+  document.getElementById('j-results').style.display='block';
+}
+function badge(line){const c=lineColors[line]||'#555';const dk=c==='#FFD329'||c==='#F3A9BB';return`<span class="lbadge${dk?' dk':''}" style="background:${c}">${line}</span>`}
+function renderRoutes(opts,from,to){
+  const list=document.getElementById('route-list');const det=document.getElementById('route-detail');
+  list.innerHTML='';det.innerHTML='';
+  opts.forEach((opt,i)=>{
+    const el=document.createElement('div');el.className='route-option'+(i===0?' selected':'');
+    el.onclick=()=>{document.querySelectorAll('.route-option').forEach(r=>r.classList.remove('selected'));el.classList.add('selected');showDetail(opt,from,to)};
+    const badges=opt.steps.map(s=>badge(s.line)).join('<span class="sep">›</span>');
+    el.innerHTML=`<div class="route-top"><div class="route-time">${opt.time}</div><div class="route-meta">${opt.changes===0?'Direct':'Change: '+opt.steps.slice(0,-1).map(s=>s.to).join(', ')}</div></div><div class="route-badges">${badges}</div>`;
+    list.appendChild(el);
+  });
+  showDetail(opts[0],from,to);
+}
+function showDetail(opt,from,to){
+  const det=document.getElementById('route-detail');
+  let html='<div class="card"><div class="section-label">Step by step</div>';
+  opt.steps.forEach((step,i)=>{
+    const c=lineColors[step.line]||'#555';
+    const sf=i===0?from:opt.steps[i-1].to;
+    html+=`<div class="step"><div class="step-bar" style="background:${c}"></div><div style="flex:1"><div class="step-from">${sf} → ${step.to}</div><div class="step-desc">${badge(step.line)}<span>${step.stops} stops · towards ${step.dir}</span></div></div></div>`;
+  });
+  html+='</div>';
+  det.innerHTML=html;
+}
+</script>
+</body>
+</html>
