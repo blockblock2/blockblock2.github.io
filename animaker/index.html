@@ -259,7 +259,6 @@ footer{border-top:2px solid var(--ink);padding:20px 0 40px;font-size:13px;color:
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-studio" aria-selected="true" onclick="go('studio')">Studio</button>
       <button role="tab" id="tab-gallery" aria-selected="false" onclick="go('gallery')">Gallery</button>
-      <button role="tab" id="tab-ai" aria-selected="false" onclick="go('ai')">AI frames</button>
     </nav>
     <div class="spacer"></div>
     <div class="acct" id="acct"></div>
@@ -1337,7 +1336,7 @@ async function doAuth(){
 function signOut(){ session = null; localStorage.removeItem('animaker_session'); renderAcct(); toast('Signed out'); }
 
 /* ---------------- posting ---------------- */
-const POST_MAX = () => LOCAL() ? 900_000 : 2_600_000; // base64 length ceiling
+const POST_MAX = () => LOCAL() ? 900_000 : 1_400_000; // base64 length ceiling
 let pending = null;
 async function openPost(){
   if (!session){ openAuth('up'); return; }
