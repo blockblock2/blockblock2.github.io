@@ -1,0 +1,1579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Animaker — sprite3 to GIF</title>
+<meta name="description" content="Drop a Scratch .sprite3 file, turn its costumes into a GIF, and post it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#12102B;
+  --ink-2:#3B3663;
+  --field:#E7E4F5;
+  --card:#FFFFFF;
+  --mag:#F0479B;
+  --cy:#2FC4E8;
+  --amber:#FFC94A;
+  --line:rgba(18,16,43,.16);
+  --line-2:rgba(18,16,43,.08);
+  --shadow:0 2px 0 var(--ink);
+  --strip:#1B1839;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--field);
+  color:var(--ink);
+  font-family:"Space Grotesk",system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(circle at 12% 8%, rgba(240,71,155,.14), transparent 45%),
+                   radial-gradient(circle at 88% 4%, rgba(47,196,232,.18), transparent 42%);
+  background-attachment:fixed;
+}
+h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;letter-spacing:-.02em;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--mag);outline-offset:2px}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* ---------- sprocket strip: the signature device ---------- */
+.sprockets{
+  height:16px;background:var(--strip);
+  background-image:repeating-linear-gradient(90deg,
+    transparent 0 9px, #fff 9px 21px, transparent 21px 30px);
+  background-size:auto 8px;background-position:center;background-repeat:repeat-x;
+  box-shadow:inset 0 0 0 100px transparent;
+}
+.sprockets.top{border-radius:var(--r) var(--r) 0 0}
+.sprockets.bot{border-radius:0 0 var(--r) var(--r)}
+
+/* ---------- header ---------- */
+header.top{
+  position:sticky;top:0;z-index:40;
+  background:rgba(231,228,245,.86);
+  backdrop-filter:blur(10px);
+  border-bottom:2px solid var(--ink);
+}
+.top .wrap{display:flex;align-items:center;gap:18px;height:62px}
+.mark{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.mark .film{
+  width:34px;height:26px;border-radius:4px;background:var(--strip);
+  display:grid;grid-template-rows:6px 1fr 6px;padding:0;overflow:hidden;flex:none
+}
+.mark .film i{background-image:repeating-linear-gradient(90deg,transparent 0 2px,#fff 2px 5px,transparent 5px 7px);background-size:auto 3px;background-position:center;background-repeat:repeat-x}
+.mark .film b{background:linear-gradient(120deg,var(--mag),var(--cy));display:block}
+.mark span{font-family:"Bricolage Grotesque";font-weight:800;font-size:21px;letter-spacing:-.03em}
+nav.tabs{display:flex;gap:4px;margin-left:6px}
+nav.tabs button{
+  background:transparent;border:2px solid transparent;border-radius:999px;
+  padding:6px 14px;font-weight:700;font-size:14px;color:var(--ink-2)
+}
+nav.tabs button[aria-selected="true"]{background:var(--ink);color:#fff}
+.spacer{flex:1}
+.acct{display:flex;align-items:center;gap:8px}
+.avatar{width:28px;height:28px;border-radius:8px;border:2px solid var(--ink);display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+
+/* ---------- buttons ---------- */
+.btn{
+  border:2px solid var(--ink);border-radius:10px;background:var(--card);
+  padding:9px 15px;font-weight:700;font-size:14px;box-shadow:var(--shadow);
+  transition:transform .08s ease, box-shadow .08s ease;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 3px 0 var(--ink)}
+.btn:active{transform:translateY(2px);box-shadow:0 0 0 var(--ink)}
+.btn[disabled]{opacity:.45;box-shadow:none;transform:none;cursor:not-allowed}
+.btn.primary{background:var(--mag);color:#fff}
+.btn.cy{background:var(--cy)}
+.btn.ghost{background:transparent;border-color:var(--line);box-shadow:none;font-weight:500}
+.btn.ghost:hover{border-color:var(--ink);transform:none}
+.btn.sm{padding:5px 10px;font-size:13px;border-radius:8px}
+
+/* ---------- hero / intake ---------- */
+.hero{padding:44px 0 26px}
+.eyebrow{font-family:"JetBrains Mono";font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
+.hero h1{font-size:clamp(38px,7vw,68px);line-height:.94;margin:10px 0 12px;max-width:16ch}
+.hero h1 em{font-style:normal;background:linear-gradient(100deg,var(--mag),var(--cy));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lede{font-size:17px;max-width:52ch;color:var(--ink-2);margin:0 0 26px}
+
+.drop{border:2px solid var(--ink);border-radius:var(--r);background:var(--card);overflow:hidden;box-shadow:0 4px 0 var(--ink)}
+.drop .bay{
+  padding:46px 24px;text-align:center;
+  background-image:conic-gradient(from 90deg at 50% 50%, #f3f1fb 25%, #fff 0 50%, #f3f1fb 0 75%, #fff 0);
+  background-size:26px 26px;
+}
+.drop.over .bay{background-color:rgba(240,71,155,.1);box-shadow:inset 0 0 0 3px var(--mag)}
+.drop .bay h2{font-size:26px;margin-bottom:6px}
+.drop .bay p{margin:0 0 18px;color:var(--ink-2);font-size:14px}
+input[type=file]{display:none}
+
+.facts{display:flex;flex-wrap:wrap;gap:22px;margin-top:22px;font-size:13px;color:var(--ink-2)}
+.facts b{display:block;font-family:"JetBrains Mono";font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+
+/* ---------- studio ---------- */
+.studio{padding:26px 0 70px;display:none}
+.studio.on{display:block}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.bar h2{font-size:24px}
+.chip{font-family:"JetBrains Mono";font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--card)}
+.chip.warn{background:var(--amber);border-color:var(--ink)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+@media(max-width:880px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:2px solid var(--ink);border-radius:var(--r);box-shadow:0 3px 0 var(--ink)}
+.panel > h3{font-size:13px;font-family:"JetBrains Mono";font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:12px 16px;border-bottom:1px solid var(--line-2)}
+.panel .body{padding:16px}
+
+.stage{display:grid;place-items:center;padding:22px;background:
+  conic-gradient(from 90deg at 50% 50%, #eceafa 25%, #fff 0 50%, #eceafa 0 75%, #fff 0);
+  background-size:22px 22px;border-bottom:1px solid var(--line-2)}
+#preview{max-width:100%;height:auto;image-rendering:auto;border-radius:6px}
+.transport{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.transport .now{font-family:"JetBrains Mono";font-size:12px;color:var(--ink-2);margin-left:auto}
+
+/* controls */
+.ctl{margin-bottom:16px}
+.ctl:last-child{margin-bottom:0}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:700;margin-bottom:6px}
+.ctl label .val{font-family:"JetBrains Mono";font-weight:400;font-size:12px;color:var(--ink-2)}
+input[type=range]{width:100%;accent-color:var(--mag)}
+.seg{display:flex;border:2px solid var(--ink);border-radius:9px;overflow:hidden}
+.seg button{flex:1;background:var(--card);border:0;padding:7px 4px;font-size:13px;font-weight:700;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.swatches{display:flex;gap:6px;align-items:center}
+.sw{width:30px;height:30px;border-radius:8px;border:2px solid var(--ink);padding:0}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--mag)}
+.sw.checker{background-image:conic-gradient(from 90deg at 50% 50%, #ddd 25%, #fff 0 50%, #ddd 0 75%, #fff 0);background-size:10px 10px}
+input[type=color]{width:30px;height:30px;padding:0;border:2px solid var(--ink);border-radius:8px;background:none}
+.row{display:flex;gap:8px}
+.row > *{flex:1}
+select,input[type=text],input[type=password],textarea{
+  width:100%;border:2px solid var(--ink);border-radius:9px;background:var(--card);padding:8px 10px;font-size:14px
+}
+textarea{resize:vertical;min-height:70px}
+.hint{font-size:12px;color:var(--ink-2);margin-top:6px}
+
+/* filmstrip */
+.strip-wrap{margin-top:18px}
+.strip-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.strip-head h3{font-size:13px;font-family:"JetBrains Mono";letter-spacing:.12em;text-transform:uppercase}
+.strip{background:var(--strip);border:2px solid var(--ink);border-radius:var(--r);overflow:hidden;box-shadow:0 3px 0 var(--ink)}
+.strip .cells{display:flex;gap:8px;overflow-x:auto;padding:10px;scrollbar-width:thin}
+.cell{
+  position:relative;flex:none;width:76px;border:0;padding:0;background:transparent;border-radius:8px
+}
+.cell .thumb{
+  position:relative;display:block;
+  width:76px;height:76px;border-radius:8px;overflow:hidden;border:2px solid rgba(255,255,255,.25);
+  background-image:conic-gradient(from 90deg at 50% 50%, #45406e 25%, #55507e 0 50%, #45406e 0 75%, #55507e 0);
+  background-size:12px 12px;display:grid;place-items:center
+}
+.cell canvas{width:100%;height:100%;display:block}
+.cell .n{font-family:"JetBrains Mono";font-size:10px;color:rgba(255,255,255,.65);padding-top:4px;display:block}
+.cell[aria-pressed="false"] .thumb{filter:grayscale(1) brightness(.5)}
+.cell[aria-pressed="false"] .thumb:after{content:"";position:absolute;inset:0;background:
+  repeating-linear-gradient(45deg,transparent 0 6px,rgba(240,71,155,.55) 6px 8px)}
+.cell.playing .thumb{border-color:var(--mag);box-shadow:0 0 0 3px rgba(240,71,155,.5)}
+
+/* render bar */
+.render{margin-top:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.prog{flex:1;min-width:180px;height:14px;border:2px solid var(--ink);border-radius:999px;background:var(--card);overflow:hidden;display:none}
+.prog.on{display:block}
+.prog i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--mag),var(--cy))}
+
+/* result */
+.result{margin-top:18px;display:none}
+.result.on{display:block}
+.result .inner{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.result img{max-width:280px;border:2px solid var(--ink);border-radius:8px;background:
+  conic-gradient(from 90deg at 50% 50%, #eceafa 25%, #fff 0 50%, #eceafa 0 75%, #fff 0);background-size:16px 16px}
+
+/* ---------- gallery ---------- */
+.gallery{padding:26px 0 70px;display:none}
+.gallery.on{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;margin-top:18px}
+.card{background:var(--card);border:2px solid var(--ink);border-radius:var(--r);box-shadow:0 3px 0 var(--ink);overflow:hidden;display:flex;flex-direction:column}
+.card .frame{position:relative;background:#0f0d24;aspect-ratio:1;display:grid;place-items:center;overflow:hidden}
+.card .frame img{width:100%;height:100%;object-fit:contain;display:block}
+.card .play{position:absolute;inset:0;background:rgba(18,16,43,.45);color:#fff;border:0;display:grid;place-items:center;font-weight:700;font-family:"Bricolage Grotesque";font-size:15px;letter-spacing:.02em}
+.card .meta{padding:12px 14px;display:flex;flex-direction:column;gap:8px;flex:1}
+.card .cap{font-size:14px;line-height:1.35}
+.card .who{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700}
+.card .stats{font-family:"JetBrains Mono";font-size:11px;color:var(--ink-2)}
+.card .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:auto}
+.like[aria-pressed="true"]{background:var(--mag);color:#fff}
+.comments{border-top:1px solid var(--line-2);padding:10px 14px;display:none;gap:8px;flex-direction:column}
+.comments.on{display:flex}
+.cmt{font-size:13px}
+.cmt b{font-weight:700}
+.empty{border:2px dashed var(--line);border-radius:var(--r);padding:40px 20px;text-align:center;color:var(--ink-2)}
+
+/* ---------- ai ---------- */
+.ai{padding:26px 0 70px;display:none}
+.ai.on{display:block}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.presets button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:500}
+.presets button:hover{border-color:var(--ink)}
+.presets button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.aiout{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;padding:16px}
+.aiout figure{margin:0;border:2px solid var(--ink);border-radius:10px;overflow:hidden;background:#0f0d24}
+.aiout img{width:100%;display:block;aspect-ratio:1;object-fit:cover}
+.aiout figcaption{font-family:"JetBrains Mono";font-size:10px;color:#fff;padding:4px 6px;background:var(--strip)}
+.aiout .slot{border:2px dashed var(--line);border-radius:10px;aspect-ratio:1;display:grid;place-items:center;font-family:"JetBrains Mono";font-size:11px;color:var(--ink-2)}
+.aiout .slot.working{border-style:solid;border-color:var(--mag);background:rgba(240,71,155,.06)}
+.aistat{padding:0 16px 16px;font-size:13px;color:var(--ink-2)}
+.cost{background:#fff;border:1px dashed var(--line);border-radius:9px;padding:8px 10px;font-size:12px;color:var(--ink-2)}
+
+/* ---------- dialogs / toast ---------- */
+dialog{border:2px solid var(--ink);border-radius:var(--r);padding:0;max-width:min(94vw,420px);box-shadow:0 6px 0 var(--ink);background:var(--card)}
+dialog::backdrop{background:rgba(18,16,43,.5)}
+dialog .body{padding:20px}
+dialog h2{font-size:22px;margin-bottom:4px}
+dialog p.sub{color:var(--ink-2);font-size:13px;margin:0 0 16px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+.err{background:var(--amber);border:2px solid var(--ink);border-radius:9px;padding:8px 10px;font-size:13px;margin-bottom:12px;display:none}
+.err.on{display:block}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,120%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-weight:700;font-size:14px;z-index:80;transition:transform .25s ease;max-width:90vw}
+#toast.on{transform:translate(-50%,0)}
+footer{border-top:2px solid var(--ink);padding:20px 0 40px;font-size:13px;color:var(--ink-2)}
+.localnote{background:var(--amber);border:2px solid var(--ink);border-radius:10px;padding:10px 14px;font-size:13px;margin:16px 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="mark" href="#" onclick="go('studio');return false">
+      <span class="film"><i></i><b></b><i></i></span>
+      <span>Animaker</span>
+    </a>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-studio" aria-selected="true" onclick="go('studio')">Studio</button>
+      <button role="tab" id="tab-gallery" aria-selected="false" onclick="go('gallery')">Gallery</button>
+      <button role="tab" id="tab-ai" aria-selected="false" onclick="go('ai')">AI frames</button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="acct" id="acct"></div>
+  </div>
+</header>
+
+<main>
+<section id="view-studio">
+
+  <div class="hero wrap" id="hero">
+    <div class="eyebrow">Scratch sprite → animated GIF</div>
+    <h1>Every costume is <em>already a frame.</em></h1>
+    <p class="lede">Drop in a <span class="mono">.sprite3</span> file. Animaker lines its costumes up on a strip, lets you pick the ones that belong in the loop, and encodes a GIF right here in your browser. Nothing uploads until you post it.</p>
+
+    <div class="drop" id="drop">
+      <div class="sprockets top"></div>
+      <div class="bay">
+        <h2>Drop a sprite here</h2>
+        <p>Or pick a file — <span class="mono">.sprite3</span>, exported from Scratch or TurboWarp by right-clicking a sprite → Export.</p>
+        <button class="btn primary" onclick="fileInput.click()">Choose a .sprite3 file</button>
+        <input type="file" id="fileInput" accept=".sprite3,application/zip">
+      </div>
+      <div class="sprockets bot"></div>
+    </div>
+
+    <div class="facts">
+      <div><b>Runs local</b>Encoding happens in your browser</div>
+      <div><b>Frame control</b>Pick, trim, reverse, ping-pong</div>
+      <div><b>Post it</b>Share a loop to the gallery</div>
+    </div>
+    <div id="localnote"></div>
+  </div>
+
+  <div class="studio wrap" id="studio">
+    <div class="bar">
+      <h2 id="spriteName">Sprite</h2>
+      <span class="chip mono" id="chipFrames"></span>
+      <span class="chip mono" id="chipSize"></span>
+      <span class="chip warn" id="chipDupe" style="display:none"></span>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="resetAll()">Load another sprite</button>
+    </div>
+
+    <div class="grid">
+      <div>
+        <div class="panel">
+          <div class="stage"><canvas id="preview" width="300" height="300"></canvas></div>
+          <div class="transport">
+            <button class="btn sm" id="playBtn" onclick="togglePlay()">Pause</button>
+            <button class="btn ghost sm" onclick="step(-1)">◀ Step</button>
+            <button class="btn ghost sm" onclick="step(1)">Step ▶</button>
+            <span class="now mono" id="nowLabel"></span>
+          </div>
+        </div>
+
+        <div class="strip-wrap">
+          <div class="strip-head">
+            <h3>Frame strip</h3>
+            <span class="hint" style="margin:0">Click a frame to drop it from the loop</span>
+            <div class="spacer"></div>
+            <button class="btn ghost sm" onclick="setAll(true)">All in</button>
+            <button class="btn ghost sm" onclick="invertAll()">Invert</button>
+            <button class="btn ghost sm" id="trimBtn" style="display:none" onclick="trimDupes()"></button>
+          </div>
+          <div class="strip">
+            <div class="sprockets top" style="border-radius:0"></div>
+            <div class="cells" id="cells"></div>
+            <div class="sprockets bot" style="border-radius:0"></div>
+          </div>
+        </div>
+
+        <div class="render">
+          <button class="btn primary" id="renderBtn" onclick="renderGif()">Render GIF</button>
+          <button class="btn ghost" onclick="exportFrames()">Download frames (.zip)</button>
+          <button class="btn ghost" onclick="exportSprite3(false)">Download .sprite3</button>
+          <div class="prog" id="prog"><i></i></div>
+        </div>
+
+        <div class="panel result" id="result">
+          <h3>Your GIF</h3>
+          <div class="body inner">
+            <img id="resultImg" alt="Rendered GIF preview">
+            <div style="flex:1;min-width:200px">
+              <p class="mono" id="resultStats" style="font-size:13px;margin:0 0 14px"></p>
+              <div class="row" style="flex-wrap:wrap;gap:8px">
+                <button class="btn cy" onclick="downloadGif()">Download .gif</button>
+                <button class="btn primary" onclick="openPost()">Post to gallery</button>
+              </div>
+              <p class="hint">Posting uploads a smaller copy so the gallery stays quick. Your download keeps the full size.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="controls">
+        <h3>Settings</h3>
+        <div class="body">
+          <div class="ctl">
+            <label>Speed <span class="val" id="fpsVal"></span></label>
+            <input type="range" id="fps" min="1" max="30" value="12">
+          </div>
+          <div class="ctl">
+            <label>Size <span class="val" id="sizeVal"></span></label>
+            <input type="range" id="size" min="80" max="600" step="10" value="300">
+          </div>
+          <div class="ctl">
+            <label>Play order</label>
+            <div class="seg" id="orderSeg">
+              <button data-v="normal" aria-pressed="true">Forward</button>
+              <button data-v="reverse" aria-pressed="false">Reverse</button>
+              <button data-v="pingpong" aria-pressed="false">Ping-pong</button>
+            </div>
+          </div>
+          <div class="ctl">
+            <label>Use every <span class="val" id="everyVal"></span></label>
+            <input type="range" id="every" min="1" max="6" value="1">
+            <div class="hint">Skips frames to make a lighter file.</div>
+          </div>
+          <div class="ctl">
+            <label>Background</label>
+            <div class="swatches" id="bgSw">
+              <button class="sw checker" data-v="transparent" aria-pressed="true" title="Transparent"></button>
+              <button class="sw" data-v="#ffffff" style="background:#fff" aria-pressed="false" title="White"></button>
+              <button class="sw" data-v="#12102B" style="background:#12102B" aria-pressed="false" title="Ink"></button>
+              <input type="color" id="bgCustom" value="#f0479b" title="Custom colour">
+            </div>
+            <div class="hint" id="bgHint">GIF transparency is all-or-nothing, so soft edges get a hard cut.</div>
+          </div>
+          <div class="ctl">
+            <label>Align frames by</label>
+            <div class="seg" id="alignSeg">
+              <button data-v="center" aria-pressed="true">Costume centre</button>
+              <button data-v="bbox" aria-pressed="false">Image edges</button>
+            </div>
+            <div class="hint">Switch if the animation jitters.</div>
+          </div>
+          <div class="ctl">
+            <label>Colour quality <span class="val" id="qVal"></span></label>
+            <input type="range" id="quality" min="1" max="20" value="10">
+            <div class="hint">Lower is better looking and slower.</div>
+          </div>
+          <div class="ctl">
+            <label>Dithering</label>
+            <div class="seg" id="ditherSeg">
+              <button data-v="off" aria-pressed="true">Off</button>
+              <button data-v="FloydSteinberg-serpentine" aria-pressed="false">Floyd</button>
+              <button data-v="Atkinson-serpentine" aria-pressed="false">Atkinson</button>
+            </div>
+            <div class="hint">Helps with gradients and photo-like sprites.</div>
+          </div>
+          <div class="ctl">
+            <label>Looping</label>
+            <div class="seg" id="loopSeg">
+              <button data-v="1" aria-pressed="true">Loop forever</button>
+              <button data-v="0" aria-pressed="false">Play once</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="view-gallery" class="gallery">
+  <div class="wrap">
+    <div class="bar">
+      <h2>Gallery</h2>
+      <span class="chip mono" id="galleryCount"></span>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="loadFeed(true)">Refresh</button>
+    </div>
+    <div id="feed"></div>
+  </div>
+</section>
+</main>
+
+<section id="view-ai" class="ai">
+  <div class="wrap">
+    <div class="bar">
+      <h2>AI frames</h2>
+      <span class="chip mono">Nano Banana 2</span>
+      <div class="spacer"></div>
+      <span class="chip mono" id="aiQuota"></span>
+    </div>
+    <div id="aiOff"></div>
+    <div class="grid">
+      <div class="panel">
+        <h3>Results</h3>
+        <div class="aiout" id="aiOut"></div>
+        <div class="aistat" id="aiStat">Nothing made yet. Set a prompt and press <strong>Make frames</strong>.</div>
+        <div class="body" style="border-top:1px solid var(--line-2);display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" id="aiSend" onclick="aiSendToStudio()" disabled>Send to Studio</button>
+          <button class="btn ghost" id="aiSprite" onclick="exportSprite3(true)" disabled>Download .sprite3</button>
+          <button class="btn ghost" id="aiClear" onclick="aiClear()" disabled>Clear</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>What to make</h3>
+        <div class="body">
+          <div class="ctl">
+            <label>Mode</label>
+            <div class="seg" id="aiModeSeg">
+              <button data-v="restyle" aria-pressed="true">Restyle mine</button>
+              <button data-v="generate" aria-pressed="false">Make new</button>
+            </div>
+            <div class="hint" id="aiModeHint"></div>
+          </div>
+          <div class="ctl">
+            <label for="aiPrompt">Prompt</label>
+            <textarea id="aiPrompt" maxlength="600" placeholder="pixel art, chunky 16-bit, bold outlines"></textarea>
+            <div class="presets" id="aiPresets"></div>
+          </div>
+          <div class="ctl" id="aiCountCtl">
+            <label>How many frames <span class="val" id="aiCountVal"></span></label>
+            <input type="range" id="aiCount" min="2" max="12" value="6">
+          </div>
+          <div class="ctl">
+            <label>Resolution</label>
+            <div class="seg" id="aiSizeSeg">
+              <button data-v="1K" aria-pressed="true">1K</button>
+              <button data-v="2K" aria-pressed="false">2K</button>
+            </div>
+          </div>
+          <div class="ctl">
+            <label for="aiAspect">Shape</label>
+            <select id="aiAspect">
+              <option value="1:1">Square 1:1</option>
+              <option value="4:3">Landscape 4:3</option>
+              <option value="16:9">Wide 16:9</option>
+              <option value="3:4">Portrait 3:4</option>
+              <option value="9:16">Tall 9:16</option>
+            </select>
+          </div>
+          <p class="cost" id="aiCost"></p>
+          <div class="row" style="margin-top:12px">
+            <button class="btn primary" id="aiGo" onclick="aiRun()">Make frames</button>
+            <button class="btn ghost" id="aiStop" onclick="AI.cancel=true" disabled>Stop</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer><div class="wrap">
+  <div id="connStatus" style="margin-bottom:6px"></div>
+  Animaker — costumes in, loops out. Built for sprites exported from Scratch and TurboWarp.
+</div></footer>
+
+<dialog id="authModal"><div class="body">
+  <h2 id="authTitle">Sign in</h2>
+  <p class="sub" id="authSub">Your name shows on anything you post.</p>
+  <div class="err" id="authErr"></div>
+  <div class="field"><label for="authUser">Username</label><input type="text" id="authUser" autocomplete="username" maxlength="20" placeholder="e.g. blockblock2"></div>
+  <div class="field"><label for="authPass">Password</label><input type="password" id="authPass" autocomplete="current-password" placeholder="At least 6 characters"></div>
+  <div class="row">
+    <button class="btn primary" id="authGo" onclick="doAuth()">Sign in</button>
+    <button class="btn ghost" onclick="authModal.close()">Cancel</button>
+  </div>
+  <p class="hint" id="authSwap"></p>
+</div></dialog>
+
+<dialog id="postModal"><div class="body">
+  <h2>Post to gallery</h2>
+  <p class="sub">Say what it is. Everyone signed in can see it.</p>
+  <div class="err" id="postErr"></div>
+  <div class="field"><label for="caption">Caption</label><textarea id="caption" maxlength="180" placeholder="Rotating chrome cube, 31 frames"></textarea></div>
+  <p class="hint mono" id="postSize"></p>
+  <div class="row" style="margin-top:12px">
+    <button class="btn primary" id="postGo" onclick="doPost()">Post it</button>
+    <button class="btn ghost" onclick="postModal.close()">Cancel</button>
+  </div>
+</div></dialog>
+
+<div id="toast"></div>
+
+<script>
+/* =======================================================================
+   Animaker
+   Config: point `api` at your Cloudflare Worker to turn on real accounts,
+   the shared gallery and AI frames. You can also paste the URL straight
+   into the banner on the page — it's remembered in this browser.
+   ======================================================================= */
+const CONFIG = {
+  api: "https://animaker.acute-percent5v.workers.dev",
+};
+let API = "";                       // resolved on boot, see renderMode()
+const LOCAL = () => !API;
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const fileInput = $('#fileInput');
+const authModal = $('#authModal');
+const postModal = $('#postModal');
+
+function toast(msg, ms=2600){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove('on'), ms);
+}
+
+/* ---------------- library loading ---------------- */
+const CDN = {
+  jszip: ["https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
+          "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"],
+  gif:   ["https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js",
+          "https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"],
+  gifw:  ["https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js",
+          "https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js"],
+};
+function loadScript(url){
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = url; s.onload = res; s.onerror = () => rej(new Error(url));
+    document.head.appendChild(s);
+  });
+}
+async function tryAll(urls, fn){
+  let last;
+  for (const u of urls){ try { return await fn(u); } catch(e){ last = e; } }
+  throw last;
+}
+let libsReady = null;
+function ensureLibs(){
+  if (libsReady) return libsReady;
+  libsReady = (async () => {
+    if (!window.JSZip) await tryAll(CDN.jszip, loadScript);
+    if (!window.GIF)   await tryAll(CDN.gif, loadScript);
+    if (!window._gifWorkerURL){
+      const txt = await tryAll(CDN.gifw, async u => {
+        const r = await fetch(u); if(!r.ok) throw new Error('http '+r.status); return r.text();
+      });
+      window._gifWorkerURL = URL.createObjectURL(new Blob([txt], {type:'application/javascript'}));
+    }
+  })();
+  return libsReady;
+}
+
+/* ---------------- state ---------------- */
+const S = {
+  name: '', frames: [], include: [], order:'normal', every:1, fps:12,
+  size:300, bg:'transparent', bgCustom:'#f0479b', align:'center',
+  quality:10, dither:'off', loop:1, key:'#ff00ff',
+  gifBlob:null, gifURL:null,
+};
+let session = null;   // {u, h}
+
+/* ---------------- sprite parsing ---------------- */
+async function handleFile(file){
+  if (!file) return;
+  if (!/\.sprite3$/i.test(file.name) && file.type !== 'application/zip'){
+    toast('That needs to be a .sprite3 file'); return;
+  }
+  toast('Reading sprite…', 1400);
+  try {
+    await ensureLibs();
+    const zip = await JSZip.loadAsync(file);
+    if (!zip.file('sprite.json') && zip.file('project.json')){
+      toast('That is a whole project. In Scratch, right-click one sprite → Export.', 5000); return;
+    }
+    const jsonFile = zip.file('sprite.json');
+    if (!jsonFile) { toast('No sprite.json inside that file'); return; }
+    const data = JSON.parse(await jsonFile.async('string'));
+    const costumes = data.costumes || [];
+    if (!costumes.length){ toast('That sprite has no costumes'); return; }
+
+    const cache = new Map();
+    const frames = [];
+    for (const c of costumes){
+      const key = c.md5ext || (c.assetId + '.' + c.dataFormat);
+      let img = cache.get(key);
+      if (!img){
+        const entry = zip.file(key);
+        if (!entry) continue;
+        const isSVG = /svg/i.test(c.dataFormat || '') || /\.svg$/i.test(key);
+        const blob = await entry.async('blob');
+        img = await loadImage(blob, isSVG, entry);
+        cache.set(key, img);
+      }
+      const res = c.bitmapResolution || 1;
+      frames.push({
+        name: c.name || 'costume', img, asset: key, res,
+        w: img.naturalWidth || img.width, h: img.naturalHeight || img.height,
+        cx: c.rotationCenterX ?? (img.naturalWidth/2),
+        cy: c.rotationCenterY ?? (img.naturalHeight/2),
+      });
+    }
+    if (!frames.length){ toast('Could not read any costume images'); return; }
+
+    S.name = data.name || file.name.replace(/\.sprite3$/i,'');
+    S.frames = frames;
+    S.include = frames.map(()=>true);
+    S.key = pickKeyColor(frames);
+    startStudio();
+  } catch(err){
+    console.error(err);
+    toast('That file would not open. Try exporting the sprite again.', 4200);
+  }
+}
+
+function loadImage(blob, isSVG, entry){
+  return new Promise(async (resolve, reject) => {
+    let url = URL.createObjectURL(isSVG ? new Blob([await blob.text()], {type:'image/svg+xml'}) : blob);
+    const img = new Image();
+    img.onload = async () => {
+      if (isSVG && (!img.naturalWidth || !img.naturalHeight)){
+        // Some Scratch SVGs have no intrinsic size — read the viewBox and force one.
+        const txt = await entry.async('string');
+        const m = txt.match(/viewBox\s*=\s*["']([\d.\-\s]+)["']/i);
+        const vb = m ? m[1].trim().split(/[\s,]+/).map(Number) : [0,0,480,360];
+        const patched = txt.replace(/<svg/i, `<svg width="${vb[2]}" height="${vb[3]}"`);
+        const img2 = new Image();
+        img2.onload = () => resolve(img2);
+        img2.onerror = reject;
+        img2.src = URL.createObjectURL(new Blob([patched], {type:'image/svg+xml'}));
+        return;
+      }
+      resolve(img);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+/* Find a colour the artwork does not use, so transparency has a clean key. */
+function pickKeyColor(frames){
+  const cands = ['#ff00ff','#00ff00','#00ffff','#ff0000','#0000ff','#ffff00','#ff7f00'];
+  const used = new Set();
+  const c = document.createElement('canvas'); c.width = c.height = 48;
+  const x = c.getContext('2d', {willReadFrequently:true});
+  const picks = [0, Math.floor(frames.length/2), frames.length-1];
+  for (const i of picks){
+    const f = frames[i]; if (!f) continue;
+    x.clearRect(0,0,48,48); x.drawImage(f.img,0,0,48,48);
+    const d = x.getImageData(0,0,48,48).data;
+    for (let p=0;p<d.length;p+=4){
+      if (d[p+3] < 200) continue;
+      used.add(((d[p]>>3)<<10) | ((d[p+1]>>3)<<5) | (d[p+2]>>3));
+    }
+  }
+  for (const hex of cands){
+    const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+    if (!used.has(((r>>3)<<10)|((g>>3)<<5)|(b>>3))) return hex;
+  }
+  return '#ff00ff';
+}
+
+/* ---------------- sequence + geometry ---------------- */
+function sequence(){
+  let idx = S.frames.map((_,i)=>i).filter(i => S.include[i]);
+  if (S.every > 1) idx = idx.filter((_,k) => k % S.every === 0);
+  if (!idx.length) return [];
+  if (S.order === 'reverse') idx = idx.slice().reverse();
+  if (S.order === 'pingpong' && idx.length > 2) idx = idx.concat(idx.slice(1,-1).reverse());
+  return idx;
+}
+function metrics(idx){
+  let l=0,r=0,t=0,b=0,mw=0,mh=0;
+  for (const i of idx){
+    const f = S.frames[i];
+    const w=f.w/f.res, h=f.h/f.res, cx=f.cx/f.res, cy=f.cy/f.res;
+    l=Math.max(l,cx); r=Math.max(r,w-cx); t=Math.max(t,cy); b=Math.max(b,h-cy);
+    mw=Math.max(mw,w); mh=Math.max(mh,h);
+  }
+  return S.align === 'center'
+    ? {bw:Math.max(l+r,1), bh:Math.max(t+b,1), ax:l, ay:t, mode:'center'}
+    : {bw:Math.max(mw,1), bh:Math.max(mh,1), mode:'bbox'};
+}
+function output(idx, longest){
+  const m = metrics(idx);
+  const scale = longest / Math.max(m.bw, m.bh);
+  return {m, scale, w:Math.max(1,Math.round(m.bw*scale)), h:Math.max(1,Math.round(m.bh*scale))};
+}
+function paint(ctx, i, out, bg){
+  const f = S.frames[i], sc = out.scale;
+  ctx.clearRect(0,0,out.w,out.h);
+  if (bg){ ctx.fillStyle = bg; ctx.fillRect(0,0,out.w,out.h); }
+  const w = f.w/f.res*sc, h = f.h/f.res*sc;
+  let x, y;
+  if (out.m.mode === 'center'){ x = (out.m.ax - f.cx/f.res)*sc; y = (out.m.ay - f.cy/f.res)*sc; }
+  else { x = (out.w - w)/2; y = (out.h - h)/2; }
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(f.img, x, y, w, h);
+}
+const bgFill = () => S.bg === 'transparent' ? S.key : S.bg;
+const delayMs = () => Math.max(20, Math.round(1000/S.fps/10)*10);
+
+/* ---------------- studio ---------------- */
+function startStudio(){
+  $('#hero').style.display = 'none';
+  $('#studio').classList.add('on');
+  $('#spriteName').textContent = S.name;
+  detectDupes();
+  buildStrip();
+  syncControls();
+  refresh();
+  play = true; $('#playBtn').textContent = 'Pause';
+  requestAnimationFrame(tick);
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function resetAll(){
+  play = false;
+  S.frames = []; S.gifBlob = null;
+  $('#studio').classList.remove('on');
+  $('#result').classList.remove('on');
+  $('#hero').style.display = '';
+  fileInput.value = '';
+}
+function detectDupes(){
+  const f = S.frames; let k = 0;
+  for (let i = f.length-1; i > 0; i--){ if (f[i].asset === f[i-1].asset) k++; else break; }
+  const btn = $('#trimBtn'), chip = $('#chipDupe');
+  if (k >= 2){
+    btn.style.display = ''; btn.textContent = `Trim ${k} repeated end frames`; btn._k = k;
+    chip.style.display = ''; chip.textContent = `${k} identical frames at the end`;
+  } else { btn.style.display = 'none'; chip.style.display = 'none'; }
+}
+function trimDupes(){
+  const k = $('#trimBtn')._k || 0;
+  for (let i = S.frames.length-k; i < S.frames.length; i++) S.include[i] = false;
+  $('#trimBtn').style.display = 'none'; $('#chipDupe').style.display = 'none';
+  buildStrip(); refresh(); toast(`Dropped ${k} frames`);
+}
+function buildStrip(){
+  const box = $('#cells'); box.innerHTML = '';
+  S.frames.forEach((f, i) => {
+    const b = document.createElement('button');
+    b.className = 'cell'; b.setAttribute('aria-pressed', S.include[i] ? 'true' : 'false');
+    b.title = f.name;
+    b.innerHTML = `<span class="thumb"><canvas width="72" height="72"></canvas></span><span class="n">${i+1}</span>`;
+    const cv = b.querySelector('canvas'), cx = cv.getContext('2d');
+    const w=f.w/f.res, h=f.h/f.res, sc = 72/Math.max(w,h);
+    cx.drawImage(f.img, (72-w*sc)/2, (72-h*sc)/2, w*sc, h*sc);
+    b.onclick = () => { S.include[i] = !S.include[i]; b.setAttribute('aria-pressed', S.include[i]?'true':'false'); refresh(); };
+    box.appendChild(b);
+  });
+}
+function setAll(v){ S.include = S.include.map(()=>v); buildStrip(); refresh(); }
+function invertAll(){ S.include = S.include.map(v=>!v); buildStrip(); refresh(); }
+
+function refresh(){
+  const idx = sequence();
+  const out = idx.length ? output(idx, S.size) : {w:S.size,h:S.size};
+  $('#chipFrames').textContent = `${idx.length} of ${S.frames.length} frames`;
+  $('#chipSize').textContent = `${out.w}×${out.h} · ${(idx.length*delayMs()/1000).toFixed(1)}s loop`;
+  const c = $('#preview');
+  c.width = out.w; c.height = out.h;
+  c.style.maxWidth = Math.min(out.w, 420) + 'px';
+  seqCache = idx; outCache = out; pos = 0; acc = 0;
+  drawPreview();
+}
+let seqCache = [], outCache = null, pos = 0, acc = 0, last = 0, play = true;
+function drawPreview(){
+  const c = $('#preview'), ctx = c.getContext('2d');
+  if (!seqCache.length){ ctx.clearRect(0,0,c.width,c.height); $('#nowLabel').textContent = 'No frames selected'; return; }
+  const i = seqCache[Math.min(pos, seqCache.length-1)];
+  paint(ctx, i, outCache, S.bg === 'transparent' ? null : S.bg);
+  $('#nowLabel').textContent = `frame ${pos+1}/${seqCache.length} · ${delayMs()}ms`;
+  $$('#cells .cell').forEach((el,k)=> el.classList.toggle('playing', k === i));
+}
+function tick(ts){
+  if (!S.frames.length) return;
+  if (!last) last = ts;
+  const dt = ts - last; last = ts;
+  if (play && seqCache.length){
+    acc += dt;
+    const d = delayMs();
+    while (acc >= d){ acc -= d; pos = (pos+1) % seqCache.length; drawPreview(); }
+  }
+  requestAnimationFrame(tick);
+}
+function togglePlay(){ play = !play; $('#playBtn').textContent = play ? 'Pause' : 'Play'; }
+function step(n){ if (!seqCache.length) return; play=false; $('#playBtn').textContent='Play';
+  pos = (pos + n + seqCache.length) % seqCache.length; drawPreview(); }
+
+/* controls wiring */
+function seg(id, key, after){
+  $$(`#${id} button`).forEach(b => b.onclick = () => {
+    $$(`#${id} button`).forEach(o => o.setAttribute('aria-pressed', o===b ? 'true':'false'));
+    S[key] = isNaN(+b.dataset.v) || b.dataset.v.length > 2 ? b.dataset.v : +b.dataset.v;
+    (after||refresh)();
+  });
+}
+seg('orderSeg','order'); seg('alignSeg','align'); seg('ditherSeg','dither');
+seg('loopSeg','loop', ()=>{}); 
+$$('#bgSw .sw').forEach(b => b.onclick = () => {
+  $$('#bgSw .sw').forEach(o => o.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true'); S.bg = b.dataset.v; syncControls(); refresh();
+});
+$('#bgCustom').oninput = e => {
+  $$('#bgSw .sw').forEach(o => o.setAttribute('aria-pressed','false'));
+  S.bg = e.target.value; syncControls(); refresh();
+};
+['fps','size','every','quality'].forEach(id => {
+  $('#'+id).oninput = e => {
+    S[id === 'size' ? 'size' : id] = +e.target.value;
+    syncControls(); refresh();
+  };
+});
+function syncControls(){
+  $('#fpsVal').textContent = `${S.fps} fps · ${delayMs()}ms`;
+  $('#sizeVal').textContent = `${S.size}px longest side`;
+  $('#everyVal').textContent = S.every === 1 ? 'frame' : `${S.every}${S.every===2?'nd':S.every===3?'rd':'th'} frame`;
+  $('#qVal').textContent = S.quality <= 5 ? `${S.quality} · best` : S.quality >= 15 ? `${S.quality} · fastest` : `${S.quality}`;
+  $('#bgHint').textContent = S.bg === 'transparent'
+    ? `Transparent, keyed on ${S.key}. Soft edges get a hard cut.`
+    : `Solid ${S.bg}. Safer for gradients and glows.`;
+}
+
+/* ---------------- rendering ---------------- */
+function renderGif(){
+  const idx = sequence();
+  if (!idx.length){ toast('Pick at least one frame'); return; }
+  build(idx, S.size, S.quality).then(({blob, ms}) => {
+    if (S.gifURL) URL.revokeObjectURL(S.gifURL);
+    S.gifBlob = blob; S.gifURL = URL.createObjectURL(blob);
+    $('#resultImg').src = S.gifURL;
+    $('#resultStats').textContent =
+      `${idx.length} frames · ${outCache.w}×${outCache.h} · ${(blob.size/1024).toFixed(0)} KB · encoded in ${(ms/1000).toFixed(1)}s`;
+    $('#result').classList.add('on');
+    $('#result').scrollIntoView({behavior:'smooth', block:'nearest'});
+    toast('GIF ready');
+  }).catch(e => { console.error(e); toast('Encoding failed — try a smaller size', 4000); });
+}
+async function build(idx, longest, quality){
+  await ensureLibs();
+  const t0 = performance.now();
+  const out = output(idx, longest);
+  const cv = document.createElement('canvas');
+  cv.width = out.w; cv.height = out.h;
+  const ctx = cv.getContext('2d', {willReadFrequently:true});
+  const btn = $('#renderBtn'); btn.disabled = true; btn.textContent = 'Encoding…';
+  const bar = $('#prog'); bar.classList.add('on'); bar.firstElementChild.style.width = '0%';
+
+  const opts = {
+    workers: Math.min(4, navigator.hardwareConcurrency || 2),
+    quality, width: out.w, height: out.h,
+    workerScript: window._gifWorkerURL,
+    repeat: S.loop ? 0 : -1,
+    dither: S.dither === 'off' ? false : S.dither,
+  };
+  if (S.bg === 'transparent') opts.transparent = parseInt(S.key.slice(1), 16);
+  const gif = new GIF(opts);
+
+  for (const i of idx){
+    paint(ctx, i, out, bgFill());
+    gif.addFrame(ctx, {copy:true, delay: delayMs()});
+  }
+  return new Promise((resolve, reject) => {
+    gif.on('progress', p => bar.firstElementChild.style.width = Math.round(p*100)+'%');
+    gif.on('finished', blob => {
+      btn.disabled = false; btn.textContent = 'Render GIF';
+      bar.classList.remove('on');
+      resolve({blob, ms: performance.now()-t0});
+    });
+    gif.on('abort', () => { btn.disabled=false; btn.textContent='Render GIF'; bar.classList.remove('on'); reject(new Error('aborted')); });
+    gif.render();
+  });
+}
+function downloadGif(){
+  if (!S.gifBlob) return;
+  const a = document.createElement('a');
+  a.href = S.gifURL; a.download = (S.name || 'animaker').replace(/[^\w\-]+/g,'_') + '.gif';
+  a.click();
+}
+async function exportFrames(){
+  const idx = sequence();
+  if (!idx.length){ toast('Pick at least one frame'); return; }
+  await ensureLibs();
+  const out = output(idx, S.size);
+  const cv = document.createElement('canvas'); cv.width = out.w; cv.height = out.h;
+  const ctx = cv.getContext('2d');
+  const zip = new JSZip();
+  for (let k = 0; k < idx.length; k++){
+    paint(ctx, idx[k], out, S.bg === 'transparent' ? null : S.bg);
+    const b64 = cv.toDataURL('image/png').split(',')[1];
+    zip.file(String(k+1).padStart(3,'0') + '.png', b64, {base64:true});
+  }
+  const blob = await zip.generateAsync({type:'blob'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (S.name || 'animaker').replace(/[^\w\-]+/g,'_') + '_frames.zip';
+  a.click();
+  toast(`${idx.length} frames saved`);
+}
+
+/* ---------------- md5 (Scratch names assets by content hash) ---------------- */
+function md5(bytes){
+  const add32 = (a,b) => (a+b) & 0xFFFFFFFF;
+  const cmn = (q,a,b,x,s,t) => { a = add32(add32(a,q), add32(x,t)); return add32((a<<s)|(a>>>(32-s)), b); };
+  const ff = (a,b,c,d,x,s,t) => cmn((b&c)|((~b)&d), a,b,x,s,t);
+  const gg = (a,b,c,d,x,s,t) => cmn((b&d)|(c&(~d)), a,b,x,s,t);
+  const hh = (a,b,c,d,x,s,t) => cmn(b^c^d, a,b,x,s,t);
+  const ii = (a,b,c,d,x,s,t) => cmn(c^(b|(~d)), a,b,x,s,t);
+  function cycle(x,k){
+    let [a,b,c,d] = x;
+    a=ff(a,b,c,d,k[0],7,-680876936);   d=ff(d,a,b,c,k[1],12,-389564586);
+    c=ff(c,d,a,b,k[2],17,606105819);   b=ff(b,c,d,a,k[3],22,-1044525330);
+    a=ff(a,b,c,d,k[4],7,-176418897);   d=ff(d,a,b,c,k[5],12,1200080426);
+    c=ff(c,d,a,b,k[6],17,-1473231341); b=ff(b,c,d,a,k[7],22,-45705983);
+    a=ff(a,b,c,d,k[8],7,1770035416);   d=ff(d,a,b,c,k[9],12,-1958414417);
+    c=ff(c,d,a,b,k[10],17,-42063);     b=ff(b,c,d,a,k[11],22,-1990404162);
+    a=ff(a,b,c,d,k[12],7,1804603682);  d=ff(d,a,b,c,k[13],12,-40341101);
+    c=ff(c,d,a,b,k[14],17,-1502002290);b=ff(b,c,d,a,k[15],22,1236535329);
+    a=gg(a,b,c,d,k[1],5,-165796510);   d=gg(d,a,b,c,k[6],9,-1069501632);
+    c=gg(c,d,a,b,k[11],14,643717713);  b=gg(b,c,d,a,k[0],20,-373897302);
+    a=gg(a,b,c,d,k[5],5,-701558691);   d=gg(d,a,b,c,k[10],9,38016083);
+    c=gg(c,d,a,b,k[15],14,-660478335); b=gg(b,c,d,a,k[4],20,-405537848);
+    a=gg(a,b,c,d,k[9],5,568446438);    d=gg(d,a,b,c,k[14],9,-1019803690);
+    c=gg(c,d,a,b,k[3],14,-187363961);  b=gg(b,c,d,a,k[8],20,1163531501);
+    a=gg(a,b,c,d,k[13],5,-1444681467); d=gg(d,a,b,c,k[2],9,-51403784);
+    c=gg(c,d,a,b,k[7],14,1735328473);  b=gg(b,c,d,a,k[12],20,-1926607734);
+    a=hh(a,b,c,d,k[5],4,-378558);      d=hh(d,a,b,c,k[8],11,-2022574463);
+    c=hh(c,d,a,b,k[11],16,1839030562); b=hh(b,c,d,a,k[14],23,-35309556);
+    a=hh(a,b,c,d,k[1],4,-1530992060);  d=hh(d,a,b,c,k[4],11,1272893353);
+    c=hh(c,d,a,b,k[7],16,-155497632);  b=hh(b,c,d,a,k[10],23,-1094730640);
+    a=hh(a,b,c,d,k[13],4,681279174);   d=hh(d,a,b,c,k[0],11,-358537222);
+    c=hh(c,d,a,b,k[3],16,-722521979);  b=hh(b,c,d,a,k[6],23,76029189);
+    a=hh(a,b,c,d,k[9],4,-640364487);   d=hh(d,a,b,c,k[12],11,-421815835);
+    c=hh(c,d,a,b,k[15],16,530742520);  b=hh(b,c,d,a,k[2],23,-995338651);
+    a=ii(a,b,c,d,k[0],6,-198630844);   d=ii(d,a,b,c,k[7],10,1126891415);
+    c=ii(c,d,a,b,k[14],15,-1416354905);b=ii(b,c,d,a,k[5],21,-57434055);
+    a=ii(a,b,c,d,k[12],6,1700485571);  d=ii(d,a,b,c,k[3],10,-1894986606);
+    c=ii(c,d,a,b,k[10],15,-1051523);   b=ii(b,c,d,a,k[1],21,-2054922799);
+    a=ii(a,b,c,d,k[8],6,1873313359);   d=ii(d,a,b,c,k[15],10,-30611744);
+    c=ii(c,d,a,b,k[6],15,-1560198380); b=ii(b,c,d,a,k[13],21,1309151649);
+    a=ii(a,b,c,d,k[4],6,-145523070);   d=ii(d,a,b,c,k[11],10,-1120210379);
+    c=ii(c,d,a,b,k[2],15,718787259);   b=ii(b,c,d,a,k[9],21,-343485551);
+    x[0]=add32(a,x[0]); x[1]=add32(b,x[1]); x[2]=add32(c,x[2]); x[3]=add32(d,x[3]);
+  }
+  const n = bytes.length;
+  const state = [1732584193, -271733879, -1732584194, 271733878];
+  const k = new Int32Array(16);
+  let i;
+  for (i = 0; i + 64 <= n; i += 64){
+    for (let j = 0; j < 16; j++){
+      const p = i + j*4;
+      k[j] = bytes[p] | (bytes[p+1]<<8) | (bytes[p+2]<<16) | (bytes[p+3]<<24);
+    }
+    cycle(state, k);
+  }
+  const tail = new Uint8Array(64);
+  const rest = n - i;
+  tail.set(bytes.subarray(i), 0);
+  tail[rest] = 0x80;
+  const buildK = () => { for (let j=0;j<16;j++){ const p=j*4; k[j] = tail[p]|(tail[p+1]<<8)|(tail[p+2]<<16)|(tail[p+3]<<24); } };
+  if (rest >= 56){ buildK(); cycle(state, k); tail.fill(0); }
+  buildK();
+  k[14] = (n * 8) & 0xFFFFFFFF;
+  k[15] = Math.floor(n / 536870912) & 0xFFFFFFFF;
+  cycle(state, k);
+  return state.map(v => {
+    let s = '';
+    for (let j = 0; j < 4; j++) s += ((v >> (j*8)) & 0xFF).toString(16).padStart(2,'0');
+    return s;
+  }).join('');
+}
+
+/* ---------------- export back to Scratch ---------------- */
+async function exportSprite3(fromAI){
+  const frames = fromAI ? AI.out.map(aiFrame) : null;
+  const src = frames || S.frames;
+  const idx = frames ? frames.map((_,i)=>i) : sequence();
+  if (!idx.length){ toast('Pick at least one frame'); return; }
+  await ensureLibs();
+  const keep = S.frames, keepInc = S.include;
+  if (frames){ S.frames = frames; S.include = frames.map(()=>true); }
+  try {
+    const out = output(idx, Math.min(S.size, 480));
+    const cv = document.createElement('canvas'); cv.width = out.w; cv.height = out.h;
+    const ctx = cv.getContext('2d');
+    const zip = new JSZip();
+    const costumes = [];
+    for (let k = 0; k < idx.length; k++){
+      paint(ctx, idx[k], out, S.bg === 'transparent' ? null : S.bg);
+      const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const hash = md5(bytes);
+      zip.file(hash + '.png', bytes);
+      costumes.push({
+        name: 'frame' + (k+1), bitmapResolution: 1, dataFormat: 'png',
+        assetId: hash, md5ext: hash + '.png',
+        rotationCenterX: Math.round(out.w/2), rotationCenterY: Math.round(out.h/2),
+      });
+    }
+    const name = ((frames ? S.name + ' ai' : S.name) || 'animaker').slice(0, 30);
+    zip.file('sprite.json', JSON.stringify({
+      isStage:false, name, variables:{}, lists:{}, broadcasts:{}, blocks:{}, comments:{},
+      currentCostume:0, costumes, sounds:[], volume:100, visible:true,
+      x:0, y:0, size:100, direction:90, draggable:false, rotationStyle:'all around',
+    }));
+    const file = await zip.generateAsync({type:'blob'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = name.replace(/[^\w\-]+/g,'_') + '.sprite3';
+    a.click();
+    toast(`${idx.length} costumes saved — drag it into Scratch`);
+  } finally {
+    S.frames = keep; S.include = keepInc;
+  }
+}
+
+/* ---------------- AI frames (Nano Banana) ---------------- */
+const AI = {mode:'restyle', count:6, size:'1K', aspect:'1:1', out:[], busy:false, cancel:false, quota:null};
+const AI_MAX_SOURCE = 12;
+const PRESETS = [
+  ['Pixel art', 'chunky 16-bit pixel art, limited palette, hard edges'],
+  ['Claymation', 'stop-motion claymation, visible fingerprints in the clay, soft studio light'],
+  ['Neon outline', 'glowing neon outline on deep black, thin bright tubes of light'],
+  ['Paper cutout', 'layered paper cutout collage, soft drop shadows, matte textured paper'],
+  ['Watercolour', 'loose watercolour on cold-press paper, bleeding edges, pale washes'],
+  ['Low poly', 'faceted low-poly 3D render, flat shading, single soft key light'],
+  ['Crayon', "wax crayon drawing on sugar paper, like a kid's drawing, bold scribbly fill"],
+];
+function aiFrame(img, i){
+  return {name:'ai'+(i+1), img, asset:'ai'+i, res:1,
+          w:img.naturalWidth, h:img.naturalHeight, cx:img.naturalWidth/2, cy:img.naturalHeight/2};
+}
+function aiSetup(){
+  $('#aiPresets').innerHTML = PRESETS.map((p,i) =>
+    `<button data-i="${i}" onclick="aiPreset(${i})">${p[0]}</button>`).join('');
+  $$('#aiModeSeg button').forEach(b => b.onclick = () => {
+    $$('#aiModeSeg button').forEach(o => o.setAttribute('aria-pressed', o===b ? 'true':'false'));
+    AI.mode = b.dataset.v; aiSync();
+  });
+  $$('#aiSizeSeg button').forEach(b => b.onclick = () => {
+    $$('#aiSizeSeg button').forEach(o => o.setAttribute('aria-pressed', o===b ? 'true':'false'));
+    AI.size = b.dataset.v; aiSync();
+  });
+  $('#aiCount').oninput = e => { AI.count = +e.target.value; aiSync(); };
+  $('#aiAspect').onchange = e => { AI.aspect = e.target.value; };
+  aiSync();
+}
+function aiPreset(i){
+  const box = $('#aiPrompt');
+  box.value = PRESETS[i][1];
+  $$('#aiPresets button').forEach((b,k) => b.setAttribute('aria-pressed', k===i ? 'true':'false'));
+}
+function aiCountPlanned(){
+  if (AI.mode === 'generate') return AI.count;
+  return Math.min(sequence().length || 0, AI_MAX_SOURCE);
+}
+function aiSync(){
+  const gen = AI.mode === 'generate';
+  $('#aiCountCtl').style.display = gen ? '' : 'none';
+  $('#aiCountVal').textContent = AI.count + ' frames';
+  $('#aiModeHint').textContent = gen
+    ? 'Draws a loop from scratch, each frame built off the one before it.'
+    : 'Repaints the frames you picked in the Studio, keeping every pose where it is.';
+  const n = aiCountPlanned();
+  $('#aiCost').textContent = !gen && !S.frames.length
+    ? 'Load a sprite in the Studio first, or switch to Make new.'
+    : `${n} frame${n===1?'':'s'} means ${n} image${n===1?'':'s'} from the API at ${AI.size}. They are not free — check your Google AI billing.`;
+  $('#aiGo').disabled = AI.busy || (!gen && !S.frames.length);
+  $('#aiQuota').textContent = AI.quota ? `${AI.quota.used}/${AI.quota.limit} today` : '';
+}
+function aiPaint(){
+  const box = $('#aiOut');
+  const planned = AI.busy ? aiCountPlanned() : AI.out.length;
+  let html = AI.out.map((img,i) =>
+    `<figure><img src="${img.src}" alt="AI frame ${i+1}"><figcaption>${i+1}</figcaption></figure>`).join('');
+  if (AI.busy){
+    for (let i = AI.out.length; i < planned; i++){
+      html += `<div class="slot${i===AI.out.length?' working':''}">${i===AI.out.length?'drawing…':i+1}</div>`;
+    }
+  }
+  box.innerHTML = html;
+  const has = AI.out.length > 0;
+  $('#aiSend').disabled = !has || AI.busy;
+  $('#aiSprite').disabled = !has || AI.busy;
+  $('#aiClear').disabled = !has || AI.busy;
+}
+async function aiRun(){
+  if (LOCAL()){ toast('AI frames need the Worker connected', 4000); return; }
+  if (!session){ openAuth('up'); return; }
+  const prompt = $('#aiPrompt').value.trim();
+  if (!prompt){ toast('Write a prompt first'); return; }
+
+  const gen = AI.mode === 'generate';
+  let sources = [];
+  if (!gen){
+    const idx = sequence();
+    if (!idx.length){ toast('Load a sprite in the Studio first'); return; }
+    const use = idx.length > AI_MAX_SOURCE
+      ? idx.filter((_,k) => k % Math.ceil(idx.length/AI_MAX_SOURCE) === 0).slice(0, AI_MAX_SOURCE)
+      : idx;
+    const out = output(use, 768);
+    const cv = document.createElement('canvas'); cv.width = out.w; cv.height = out.h;
+    const ctx = cv.getContext('2d');
+    for (const i of use){
+      paint(ctx, i, out, S.bg === 'transparent' ? '#ffffff' : S.bg);
+      sources.push(cv.toDataURL('image/png').split(',')[1]);
+    }
+  }
+
+  AI.busy = true; AI.cancel = false; AI.out = [];
+  $('#aiGo').disabled = true; $('#aiStop').disabled = false;
+  aiPaint();
+  const total = gen ? AI.count : sources.length;
+  let first = null;
+
+  try {
+    for (let k = 0; k < total; k++){
+      if (AI.cancel){ $('#aiStat').textContent = `Stopped after ${AI.out.length} frames.`; break; }
+      $('#aiStat').textContent = `Drawing frame ${k+1} of ${total}…`;
+      const prev = AI.out.length ? AI.out[AI.out.length-1]._b64 : null;
+
+      let text, images = [];
+      if (gen){
+        if (k === 0){
+          text = `${prompt}. This is frame 1 of ${total} in a smooth looping animation. Centre the subject, keep the background plain and flat, and leave room around the edges. No text, no watermark, no borders.`;
+        } else {
+          text = `Frame ${k+1} of ${total} of the same looping animation: ${prompt}. Advance the motion one step forward — about ${Math.round(360/total)} degrees through a full cycle that returns to the first frame. Keep the character design, colours, lighting, camera angle and background identical to the reference images. No text, no watermark, no borders.`;
+          images = [{data:first, mime:'image/png'}, {data:prev, mime:'image/png'}];
+        }
+      } else {
+        text = `Redraw this animation frame. New look: ${prompt}. Keep the subject in exactly the same position, pose, scale and camera angle — this is frame ${k+1} of ${total} in a loop, so the composition must not shift at all. Keep the background plain. No text, no watermark, no borders.`;
+        images = [{data:sources[k], mime:'image/png'}];
+        if (prev) images.push({data:prev, mime:'image/png'});
+      }
+
+      const res = await api('/ai/image', {...session, prompt:text, images, aspect:AI.aspect, size:AI.size});
+      AI.quota = {used:res.used, limit:res.limit};
+      const img = new Image();
+      img._b64 = res.image;
+      await new Promise((ok, no) => {
+        img.onload = ok; img.onerror = no;
+        img.src = 'data:' + (res.mime || 'image/png') + ';base64,' + res.image;
+      });
+      if (k === 0) first = res.image;
+      AI.out.push(img);
+      aiPaint(); aiSync();
+    }
+    if (!AI.cancel) $('#aiStat').textContent = `${AI.out.length} frames ready. Send them to the Studio to time the loop and render a GIF.`;
+  } catch(e){
+    console.error(e);
+    $('#aiStat').textContent = `Stopped: ${e.message}`;
+    toast(e.message, 5000);
+  } finally {
+    AI.busy = false;
+    $('#aiStop').disabled = true;
+    aiPaint(); aiSync();
+  }
+}
+function aiSendToStudio(){
+  if (!AI.out.length) return;
+  S.name = (S.name || 'ai loop') + (S.frames.length ? ' (AI)' : '');
+  S.frames = AI.out.map(aiFrame);
+  S.include = S.frames.map(()=>true);
+  S.key = pickKeyColor(S.frames);
+  S.bg = '#ffffff';
+  $$('#bgSw .sw').forEach(o => o.setAttribute('aria-pressed', o.dataset.v === '#ffffff' ? 'true' : 'false'));
+  go('studio');
+  startStudio();
+  toast(`${S.frames.length} AI frames loaded`);
+}
+function aiClear(){ AI.out = []; $('#aiStat').textContent = 'Cleared.'; aiPaint(); aiSync(); }
+
+/* ---------------- backend ---------------- */
+async function api(path, body){
+  if (LOCAL()) return localAPI(path, body);
+  const r = await fetch(API + path, {
+    method: body ? 'POST' : 'GET',
+    headers: body ? {'Content-Type':'application/json'} : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json().catch(()=>({error:'Server sent something unreadable'}));
+  if (!r.ok || data.error) throw new Error(data.error || ('Request failed: ' + r.status));
+  return data;
+}
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+/* local fallback so the page works before the Worker exists */
+const LS = {
+  get(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+};
+async function localAPI(path, body){
+  const users = LS.get('animaker_users', {});
+  const posts = LS.get('animaker_posts', []);
+  if (path === '/signup'){
+    if (users[body.u]) throw new Error('That name is taken');
+    users[body.u] = {h: body.h, created: Date.now()}; LS.set('animaker_users', users);
+    return {user: body.u};
+  }
+  if (path === '/signin'){
+    if (!users[body.u] || users[body.u].h !== body.h) throw new Error('Wrong name or password');
+    return {user: body.u};
+  }
+  if (path === '/feed') return {posts: posts.map(p => ({...p, commentCount:(p.comments||[]).length}))};
+  if (path.startsWith('/comments')){
+    const id = new URLSearchParams(path.split('?')[1]).get('id');
+    const p = posts.find(p=>p.id===id);
+    return {comments: (p && p.comments) || []};
+  }
+  if (path === '/post'){
+    const id = Date.now().toString(36);
+    posts.unshift({id, u:body.u, caption:body.caption, gif:body.gif, poster:body.poster,
+                   w:body.w, h:body.h, frames:body.frames, fps:body.fps, ts:Date.now(), likes:[], comments:[]});
+    try { LS.set('animaker_posts', posts.slice(0,60)); }
+    catch { throw new Error('This browser is out of local storage. Delete an older post, or connect the Worker for the shared gallery.'); }
+    return {id};
+  }
+  if (path === '/like'){
+    const p = posts.find(p=>p.id===body.id); if(!p) throw new Error('That post is gone');
+    p.likes = p.likes || [];
+    const i = p.likes.indexOf(body.u); i<0 ? p.likes.push(body.u) : p.likes.splice(i,1);
+    LS.set('animaker_posts', posts); return {likes:p.likes};
+  }
+  if (path === '/comment'){
+    const p = posts.find(p=>p.id===body.id); if(!p) throw new Error('That post is gone');
+    p.comments = p.comments || [];
+    p.comments.push({u:body.u, text:body.text, ts:Date.now()});
+    LS.set('animaker_posts', posts); return {comments:p.comments};
+  }
+  if (path === '/delete'){
+    const i = posts.findIndex(p=>p.id===body.id && p.u===body.u);
+    if (i<0) throw new Error('You can only delete your own posts');
+    posts.splice(i,1); LS.set('animaker_posts', posts); return {ok:true};
+  }
+  throw new Error('Unknown request');
+}
+
+/* ---------------- accounts ---------------- */
+function renderAcct(){
+  const el = $('#acct');
+  if (session){
+    el.innerHTML = `<span class="avatar" style="background:${tint(session.u)}">${session.u[0].toUpperCase()}</span>
+      <span style="font-weight:700;font-size:14px">${esc(session.u)}</span>
+      <button class="btn ghost sm" onclick="signOut()">Sign out</button>`;
+  } else {
+    el.innerHTML = `<button class="btn ghost sm" onclick="openAuth('in')">Sign in</button>
+      <button class="btn sm" onclick="openAuth('up')">Sign up</button>`;
+  }
+}
+function tint(name){
+  let n = 0; for (const c of name) n = (n*31 + c.charCodeAt(0)) % 360;
+  return `hsl(${n} 80% 78%)`;
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let authMode = 'in';
+function openAuth(mode){
+  authMode = mode;
+  $('#authTitle').textContent = mode === 'up' ? 'Create an account' : 'Sign in';
+  $('#authSub').textContent = mode === 'up' ? 'Pick a name for your posts. No email needed.' : 'Welcome back.';
+  $('#authGo').textContent = mode === 'up' ? 'Create account' : 'Sign in';
+  $('#authSwap').innerHTML = mode === 'up'
+    ? `Already have one? <a href="#" onclick="openAuth('in');return false">Sign in</a>`
+    : `New here? <a href="#" onclick="openAuth('up');return false">Create an account</a>`;
+  $('#authErr').classList.remove('on');
+  authModal.showModal(); $('#authUser').focus();
+}
+async function doAuth(){
+  const u = $('#authUser').value.trim(), p = $('#authPass').value;
+  const err = $('#authErr');
+  const fail = m => { err.textContent = m; err.classList.add('on'); };
+  if (!/^[a-zA-Z0-9_\-]{3,20}$/.test(u)) return fail('Names use 3–20 letters, numbers, dashes or underscores.');
+  if (p.length < 6) return fail('Passwords need at least 6 characters.');
+  const btn = $('#authGo'); btn.disabled = true;
+  try {
+    const h = await sha256(u.toLowerCase() + ':' + p);
+    await api(authMode === 'up' ? '/signup' : '/signin', {u, h});
+    session = {u, h};
+    LS.set('animaker_session', session);
+    renderAcct(); authModal.close();
+    toast(authMode === 'up' ? `Account created — hi ${u}` : `Signed in as ${u}`);
+    if ($('#view-gallery').classList.contains('on')) loadFeed(true);
+  } catch(e){ fail(e.message); }
+  finally { btn.disabled = false; }
+}
+function signOut(){ session = null; localStorage.removeItem('animaker_session'); renderAcct(); toast('Signed out'); }
+
+/* ---------------- posting ---------------- */
+const POST_MAX = () => LOCAL() ? 900_000 : 2_600_000; // base64 length ceiling
+let pending = null;
+async function openPost(){
+  if (!session){ openAuth('up'); return; }
+  if (!S.gifBlob){ toast('Render a GIF first'); return; }
+  $('#postErr').classList.remove('on');
+  $('#postSize').textContent = 'Preparing a gallery-sized copy…';
+  $('#postGo').disabled = true;
+  postModal.showModal();
+  try {
+    const idx = sequence();
+    // A lighter copy: 240px, at most 30 frames, slightly cheaper palette.
+    const lite = idx.length > 30 ? idx.filter((_,k)=> k % Math.ceil(idx.length/30) === 0) : idx;
+    const {blob} = await build(lite, Math.min(240, S.size), Math.max(S.quality, 12));
+    const out = output(lite, Math.min(240, S.size));
+    const cv = document.createElement('canvas'); cv.width = out.w; cv.height = out.h;
+    paint(cv.getContext('2d'), lite[0], out, S.bg === 'transparent' ? '#12102B' : S.bg);
+    pending = {
+      gif: await toB64(blob), poster: cv.toDataURL('image/png').split(',')[1],
+      w: out.w, h: out.h, frames: lite.length, fps: S.fps, bytes: blob.size,
+    };
+    $('#postSize').textContent = `${lite.length} frames · ${out.w}×${out.h} · ${(blob.size/1024).toFixed(0)} KB`;
+    if (pending.gif.length > POST_MAX()){
+      $('#postErr').textContent = 'This loop is too heavy to post. Drop some frames or lower the size, then render again.';
+      $('#postErr').classList.add('on');
+    } else $('#postGo').disabled = false;
+  } catch(e){
+    console.error(e);
+    $('#postErr').textContent = 'Could not prepare the post copy.'; $('#postErr').classList.add('on');
+  }
+}
+function toB64(blob){
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result.split(',')[1]);
+    fr.onerror = rej; fr.readAsDataURL(blob);
+  });
+}
+async function doPost(){
+  const btn = $('#postGo'); btn.disabled = true; btn.textContent = 'Posting…';
+  try {
+    await api('/post', {...session, ...pending, caption: $('#caption').value.trim() || S.name});
+    postModal.close(); $('#caption').value = '';
+    toast('Posted');
+    go('gallery'); loadFeed(true);
+  } catch(e){
+    $('#postErr').textContent = e.message; $('#postErr').classList.add('on');
+  } finally { btn.disabled = false; btn.textContent = 'Post it'; }
+}
+
+/* ---------------- gallery ---------------- */
+let feedCache = null;
+async function loadFeed(force){
+  const box = $('#feed');
+  if (feedCache && !force){ paintFeed(feedCache); return; }
+  box.innerHTML = `<div class="empty">Loading the gallery…</div>`;
+  try {
+    const {posts} = await api('/feed');
+    feedCache = posts || [];
+    paintFeed(feedCache);
+  } catch(e){
+    box.innerHTML = `<div class="empty">The gallery is not answering.<br><span class="mono">${esc(e.message)}</span></div>`;
+  }
+}
+function paintFeed(posts){
+  const box = $('#feed');
+  $('#galleryCount').textContent = `${posts.length} loop${posts.length===1?'':'s'}`;
+  if (!posts.length){
+    box.innerHTML = `<div class="empty"><strong>Nothing here yet.</strong><br>Render a GIF in the Studio and post the first one.</div>`;
+    return;
+  }
+  box.innerHTML = `<div class="cards">` + posts.map(p => {
+    const likes = p.likes || [];
+    const mine = session && likes.includes(session.u);
+    const src = p.gifUrl || (p.gif ? 'data:image/gif;base64,' + p.gif : '');
+    const poster = p.posterUrl || (p.poster ? 'data:image/png;base64,' + p.poster : '');
+    return `<article class="card" data-id="${esc(p.id)}">
+      <div class="sprockets top" style="border-radius:0"></div>
+      <div class="frame">
+        <img alt="${esc(p.caption||'loop')}" src="${poster}" data-gif="${esc(src)}">
+        <button class="play" onclick="playCard(this)">▶ Play</button>
+      </div>
+      <div class="sprockets bot" style="border-radius:0"></div>
+      <div class="meta">
+        <div class="who"><span class="avatar" style="background:${tint(p.u)}">${esc(p.u[0].toUpperCase())}</span>${esc(p.u)}</div>
+        <div class="cap">${esc(p.caption||'')}</div>
+        <div class="stats">${p.frames} frames · ${p.w}×${p.h} · ${p.fps} fps · ${when(p.ts)}</div>
+        <div class="acts">
+          <button class="btn sm like" aria-pressed="${mine?'true':'false'}" onclick="like('${esc(p.id)}',this)">♥ <span>${likes.length}</span></button>
+          <button class="btn ghost sm" onclick="toggleComments('${esc(p.id)}',this)">Comments (${p.commentCount ?? (p.comments||[]).length})</button>
+          <a class="btn ghost sm" href="${src}" download="${esc((p.caption||'loop').replace(/[^\w\-]+/g,'_'))}.gif">Save</a>
+          ${session && session.u === p.u ? `<button class="btn ghost sm" onclick="del('${esc(p.id)}')">Delete</button>` : ''}
+        </div>
+      </div>
+      <div class="comments">
+        ${(p.comments||[]).map(c=>`<div class="cmt"><b>${esc(c.u)}</b> ${esc(c.text)}</div>`).join('') || '<div class="cmt" style="color:#6b6690">No comments yet.</div>'}
+        ${session ? `<div class="row"><input type="text" placeholder="Say something" maxlength="140" onkeydown="if(event.key==='Enter')comment('${esc(p.id)}',this)"><button class="btn sm" onclick="comment('${esc(p.id)}',this.previousElementSibling)">Send</button></div>` : '<div class="hint">Sign in to comment.</div>'}
+      </div>
+    </article>`;
+  }).join('') + `</div>`;
+}
+function when(ts){
+  const s = (Date.now()-ts)/1000;
+  if (s < 90) return 'just now';
+  if (s < 5400) return Math.round(s/60) + ' min ago';
+  if (s < 86400*2) return Math.round(s/3600) + ' h ago';
+  return new Date(ts).toLocaleDateString();
+}
+function playCard(btn){
+  const img = btn.previousElementSibling;
+  if (img.dataset.gif) img.src = img.dataset.gif;
+  btn.remove();
+}
+async function toggleComments(id, btn){
+  const box = btn.closest('.card').querySelector('.comments');
+  box.classList.toggle('on');
+  const p = (feedCache||[]).find(p => p.id === id);
+  if (!box.classList.contains('on') || !p || p._loaded) return;
+  if (!p.commentCount){ p._loaded = true; return; }
+  try {
+    const {comments} = await api('/comments?id=' + encodeURIComponent(id));
+    p.comments = comments; p._loaded = true;
+    const open = new Set([...document.querySelectorAll('.comments.on')].map(c => c.closest('.card').dataset.id));
+    paintFeed(feedCache);
+    open.forEach(cid => {
+      const el = document.querySelector(`.card[data-id="${cid}"] .comments`);
+      if (el) el.classList.add('on');
+    });
+  } catch(e){ toast(e.message); }
+}
+async function like(id, btn){
+  if (!session){ openAuth('in'); return; }
+  try {
+    const {likes} = await api('/like', {...session, id});
+    btn.querySelector('span').textContent = likes.length;
+    btn.setAttribute('aria-pressed', likes.includes(session.u) ? 'true':'false');
+    const p = (feedCache||[]).find(p=>p.id===id); if (p) p.likes = likes;
+  } catch(e){ toast(e.message); }
+}
+async function comment(id, input){
+  const text = input.value.trim(); if (!text) return;
+  if (!session){ openAuth('in'); return; }
+  input.disabled = true;
+  try {
+    const {comments} = await api('/comment', {...session, id, text});
+    const p = (feedCache||[]).find(p=>p.id===id);
+    if (p){ p.comments = comments; p.commentCount = comments.length; p._loaded = true; }
+    paintFeed(feedCache);
+    const el = document.querySelector(`.card[data-id="${id}"] .comments`);
+    if (el) el.classList.add('on');
+  } catch(e){ toast(e.message); input.disabled = false; }
+}
+async function del(id){
+  if (!confirm('Delete this post for good?')) return;
+  try { await api('/delete', {...session, id}); feedCache = (feedCache||[]).filter(p=>p.id!==id); paintFeed(feedCache); toast('Deleted'); }
+  catch(e){ toast(e.message); }
+}
+
+/* ---------------- worker connection ---------------- */
+function renderMode(){
+  const note = $('#localnote'), aiOff = $('#aiOff'), status = $('#connStatus');
+  if (LOCAL()){
+    note.innerHTML = `<div class="localnote"><strong>Local mode.</strong>
+      Accounts and posts are saved in this browser only. Paste your Worker URL to switch on the
+      shared gallery and AI frames.
+      <div class="row" style="margin-top:10px;max-width:520px">
+        <input type="text" id="apiUrl" placeholder="https://animaker.your-name.workers.dev"
+               autocomplete="off" autocapitalize="off" spellcheck="false"
+               onkeydown="if(event.key==='Enter')connectWorker()">
+        <button class="btn sm" style="flex:0 0 auto" onclick="connectWorker()">Connect</button>
+      </div></div>`;
+    aiOff.innerHTML = `<div class="localnote"><strong>AI frames need the Worker.</strong>
+      The image model runs through your Cloudflare Worker so the Gemini key stays off this page.
+      Connect it on the Studio tab, then add <span class="mono">GEMINI_KEY</span> to the Worker.</div>`;
+    status.innerHTML = 'Not connected to a Worker.';
+  } else {
+    note.innerHTML = '';
+    aiOff.innerHTML = '';
+    status.innerHTML = `Connected to <span class="mono">${esc(API)}</span>` +
+      (CONFIG.api ? '' : ` · <a href="#" onclick="disconnectWorker();return false">disconnect</a>`);
+  }
+}
+async function connectWorker(){
+  const el = $('#apiUrl');
+  const url = (el.value || '').trim().replace(/\/+$/, '');
+  if (!/^https:\/\/\S+\.\S+/.test(url)){ toast('Paste the full https:// Worker URL'); return; }
+  toast('Checking that Worker…', 1500);
+  try {
+    const r = await fetch(url + '/');
+    const d = await r.json();
+    if (!d || d.service !== 'animaker') throw new Error('that is not the Animaker Worker');
+    LS.set('animaker_api', url);
+    API = url;
+    feedCache = null;
+    renderMode(); aiSync();
+    toast('Worker connected');
+  } catch(e){
+    toast(`Could not reach it — ${e.message}`, 5000);
+  }
+}
+function disconnectWorker(){
+  localStorage.removeItem('animaker_api');
+  API = ''; feedCache = null; session = null;
+  localStorage.removeItem('animaker_session');
+  renderAcct(); renderMode(); aiSync();
+  toast('Back to local mode');
+}
+
+/* ---------------- nav + boot ---------------- */
+function go(view){
+  $('#view-studio').style.display = view === 'studio' ? '' : 'none';
+  $('#view-gallery').classList.toggle('on', view === 'gallery');
+  $('#view-ai').classList.toggle('on', view === 'ai');
+  $('#tab-studio').setAttribute('aria-selected', view==='studio');
+  $('#tab-gallery').setAttribute('aria-selected', view==='gallery');
+  $('#tab-ai').setAttribute('aria-selected', view==='ai');
+  if (view === 'gallery') loadFeed(false);
+  if (view === 'ai') aiSync();
+  window.scrollTo({top:0});
+}
+
+const drop = $('#drop');
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+(function boot(){
+  API = (CONFIG.api || LS.get('animaker_api', '') || '').replace(/\/+$/, '');
+  session = LS.get('animaker_session', null);
+  renderAcct();
+  aiSetup();
+  renderMode();
+  ensureLibs().catch(()=> toast('Could not load the encoder. Check your connection.', 5000));
+})();
+</script>
+</body>
+</html>
